@@ -8,7 +8,7 @@ class TileType:
     can_flip: bool = True
     
 BASIC = TileType("basic")
-NOTFLIPPABLE = TileType("not_flippable", False)
+NOTFLIPPABLE = TileType("notflippable", False)
     
 _REGISTRY = {t.id: t for t in (BASIC, NOTFLIPPABLE)}
 
