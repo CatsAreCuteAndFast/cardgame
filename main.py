@@ -11,6 +11,12 @@ FPS = 144
 def make_layout(screen: pygame.Surface, board: Board) -> Layout:
     return Layout(screen.get_rect(), board.size, gap_ratio=0.05)
 
+def handle_event(event: pygame.Event, layout: Layout, board: Board):
+    if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+        coord = layout.coord_at(event.pos)
+        if coord is not None:
+            board.get(coord).flip()
+
 def main() -> None:
     pygame.init()
     clock = pygame.time.Clock()
@@ -27,6 +33,7 @@ def main() -> None:
                 running = False
             elif event.type == pygame.VIDEORESIZE:
                 layout = make_layout(screen, demo)
+            handle_event(event, layout, demo)
         screen.fill(BACKGROUND)
         board_renderer.draw(screen, layout, demo)
 

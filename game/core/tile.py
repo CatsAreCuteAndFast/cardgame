@@ -4,7 +4,7 @@ from game.core.tiletype import TileType
 @dataclass
 class Tile:
     type: TileType
-    is_flipped: bool = True
+    is_flipped: bool = False
     
     def flip(self) -> bool:
         if not self.type.can_flip:
