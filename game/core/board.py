@@ -1,11 +1,20 @@
 from game.core.tile import Tile
 from game.core.coord import Coord
+from game.core.tiletype import get_type
 
 class Board:
     def __init__(self, size: tuple[int, int], tiles: list[Tile]) -> None:
         self.width, self.height = size
         self._check_length(tiles)
         self.tiles = list(tiles)
+        
+    @classmethod
+    def filled(cls, size: tuple[int, int], id: str) -> Board:
+        width, height = size
+        tiles: list[Tile] = []
+        for _ in range(width * height):
+            tiles.append(Tile(get_type(id)))
+        return cls(size, tiles)
         
     def _check_length(self, tiles: list[Tile]) -> None:
         if len(tiles) != self.width * self.height:

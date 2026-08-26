@@ -5,9 +5,9 @@ from game.core.tiletype import get_type
 
 tile_list = [Tile(get_type("basic")), Tile(get_type("basic")), Tile(get_type("basic")), Tile(get_type("basic")), Tile(get_type("basic")), Tile(get_type("basic")), Tile(get_type("basic")), Tile(get_type("notflippable"))]
 
-board_size = 2, 4
-board = Board(board_size, tile_list)
+board_size = 3, 7
+#board = Board(board_size, tile_list)
+board_filled = Board.filled(board_size, "basic")
 
-for x in board.iterate_tiles():
-    print(x)
-
+def demo_board() -> Board:
+    return board_filled
