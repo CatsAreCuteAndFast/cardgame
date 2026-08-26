@@ -15,6 +15,10 @@ class Board:
         for _ in range(width * height):
             tiles.append(Tile(get_type(id)))
         return cls(size, tiles)
+    
+    @property
+    def size(self) -> tuple[int, int]:
+        return (self.width, self.height)
         
     def _check_length(self, tiles: list[Tile]) -> None:
         if len(tiles) != self.width * self.height:

@@ -24,8 +24,8 @@ class Layout:
         self.tile_size = max(1, self.step - self.gap_size)
 
         # Centre the finished grid inside the area.
-        grid_w = (self.step) * self.width - self.gap_size
-        grid_h = (self.step) * self.height - self.gap_size
+        grid_w = self.step * self.width - self.gap_size
+        grid_h = self.step * self.height - self.gap_size
         self.origin_x = self.area.x + (self.area.width - grid_w) // 2
         self.origin_y = self.area.y + (self.area.height - grid_h) // 2
         
@@ -49,7 +49,7 @@ class Layout:
             return coord
         else:
             return None
-        
+    
 
 
 

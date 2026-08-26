@@ -1,31 +1,41 @@
 import pygame
-from sys import exit as sysexit
 from game.view.layout import Layout
-from levels import demo_board
-from game.core.board import Board
-from game.core.coord import Coord
+from game.levels import demo_board
 from game.view.board_renderer import BoardRenderer
+from game.core.board import Board
 
-pygame.init()
-clock = pygame.time.Clock()
-screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
+WINDOW_SIZE = (800, 600)
+BACKGROUND = "black"
+FPS = 144
 
-demo = demo_board()
-layout = Layout(screen.get_rect(), (demo.width, demo.height))
-test_rect = layout.rect_for(Coord(0, 0))
-test_pos = layout.coord_at(test_rect.center)
-board_renderer = BoardRenderer()
+def make_layout(screen: pygame.Surface, board: Board) -> Layout:
+    return Layout(screen.get_rect(), board.size, gap_ratio=0.05)
 
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sysexit()
-         
-    screen.fill("black")
-    board_renderer.draw(screen, layout, demo)
+def main() -> None:
+    pygame.init()
+    clock = pygame.time.Clock()
+    screen = pygame.display.set_mode(WINDOW_SIZE, pygame.RESIZABLE)
 
-    pygame.display.flip()
-    clock.tick(144)
+    demo = demo_board()
+    layout = make_layout(screen, demo)
+    board_renderer = BoardRenderer()
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.VIDEORESIZE:
+                layout = make_layout(screen, demo)
+        screen.fill(BACKGROUND)
+        board_renderer.draw(screen, layout, demo)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+        
+    pygame.quit()
+    
+if __name__ == "__main__":
+    main()
     
         
