@@ -14,7 +14,7 @@ class HandRenderer:
             card_rect = hand_layout.rect_for(index)
             pygame.draw.rect(surface, self.color, card_rect)
             text = font.render(f"{card.id}", False, "black")
-            text_rect = text.get_rect(center = card_rect.center)
+            text_rect = text.get_rect(center=card_rect.center)
             surface.blit(text, text_rect)
             
             

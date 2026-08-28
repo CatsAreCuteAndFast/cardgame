@@ -55,7 +55,7 @@ class HandLayout:
         index, offset = divmod(pos_x - self.origin_x, self.step)
         if not 0 <= index < self.card_count:
             return None
-        if offset > self.card_width:
+        if offset >= self.card_width:
             return None
         return index
         

@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-## TODO look at the claude messages and create the data outline for the tiles of the game
-
 @dataclass(frozen=True)
 class TileType:
     id: str

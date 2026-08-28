@@ -1,7 +1,7 @@
 import pygame
 from game.core.coord import Coord
 
-class Layout:
+class BoardLayout:
     def __init__(self, area: pygame.Rect, size: tuple[int, int], max_coverage: tuple[float, float] = (0.9, 0.9), gap_ratio: float = 0.1) -> None:
         self.area = area
         self.width, self.height = size
