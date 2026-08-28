@@ -1,10 +1,9 @@
 import pygame
 from game.view.board_layout import BoardLayout
-from game.levels import demo_board
 from game.core.board import Board
-from game.rules.cardtype import get_type
 from game.view.screen_layout import ScreenLayout
 from game.view.game_renderer import GameRenderer
+from game.rules.level import Level, make_demo_level
 
 WINDOW_SIZE = (800, 600)
 BACKGROUND = "black"
@@ -21,10 +20,11 @@ def main() -> None:
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode(WINDOW_SIZE, pygame.RESIZABLE)
 
-    demo = demo_board()
-    card_list = [get_type("flip"), get_type("flip"), get_type("flip")]
+    level = make_demo_level()
+    board = level.make_board()
+    card_list = level.card_list
     
-    layouts = ScreenLayout(screen.get_rect(), demo.size, len(card_list))
+    layouts = ScreenLayout(screen.get_rect(), board.size, len(card_list))
     game_renderer = GameRenderer()
 
     running = True
@@ -33,10 +33,10 @@ def main() -> None:
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.VIDEORESIZE:
-                layouts = ScreenLayout(screen.get_rect(), demo.size, len(card_list))
-            handle_event(event, layouts.board, demo)
+                layouts = ScreenLayout(screen.get_rect(), board.size, len(card_list))
+            handle_event(event, layouts.board, board)
         screen.fill(BACKGROUND)
-        game_renderer.draw(screen, layouts, demo, card_list)
+        game_renderer.draw(screen, layouts, board, card_list)
 
         pygame.display.flip()
         clock.tick(FPS)
