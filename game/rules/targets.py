@@ -12,12 +12,12 @@ class ChooseFrom:
 
 @dataclass(frozen=True)
 class ChooseAny:
-    count: int
+    count: int = 1
     
 type TargetSpec = Fixed | ChooseFrom | ChooseAny
 
 def _format_coords(coords: tuple[Coord, ...]) -> str:
-    return ", ".join(f"({c.row},{c.col})" for c in coords)
+    return ",\n".join(f"({c.row},{c.col})" for c in coords)
 
 def describe(spec: TargetSpec) -> str:
     match spec:

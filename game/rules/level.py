@@ -7,11 +7,11 @@ from game.rules.targets import ChooseAny, ChooseFrom, Fixed
 from game.core.coord import Coord
 from game.rules.effects import get_effect
 
-PLAY_BUDGET = 3
-CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), )
-TILE_LIST = (("basic", "notflippable", "basic"),
+PLAY_BUDGET = 1000
+CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2), single_use=True))
+TILE_LIST = (("basic", "basic", "basic"),
              ("basic", "basic", "basic"),
-             ("notflippable", "basic", "basic"))
+             ("basic", "basic", "basic"))
 
 @dataclass(frozen=True)
 class Level:
