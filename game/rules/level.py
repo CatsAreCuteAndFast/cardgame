@@ -7,11 +7,16 @@ from game.rules.targets import ChooseAny, ChooseFrom, Fixed
 from game.core.coord import Coord
 from game.rules.effects import get_effect
 
-PLAY_BUDGET = 3
-CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), )
-TILE_LIST = (("basic", "notflippable", "basic"),
+PLAY_BUDGET = 1000
+CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2), single_use=True))
+TILE_LIST = (("basic", "basic", "basic"),
              ("basic", "basic", "basic"),
-             ("notflippable", "basic", "basic"))
+             ("basic", "basic", "basic"))
+SIZE = (3, 4)
+def filled_tile_list() -> tuple[tuple[str, ...], ...]:
+    width, height = SIZE
+    return tuple(("basic",) * width for _ in range(height))
+TEST_TILE_LIST = filled_tile_list()
 
 @dataclass(frozen=True)
 class Level:
@@ -84,4 +89,4 @@ class Level:
         return Board((width, height), board_tile_list)
         
 def make_demo_level() -> Level:
-    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST)
+    return Level(PLAY_BUDGET, CARD_LIST, TEST_TILE_LIST)
