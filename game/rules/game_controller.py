@@ -1,93 +1,144 @@
+from dataclasses import replace
 from game.rules.game_state import GameState
 from game.core.coord import Coord
 from game.rules.intents import Intent, ClickedTile, ClickedCard, ClickedNothing
-from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom 
-from game.rules.effects import get_effect
+from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom, required_coords, ChooseCard, is_candidate
+from game.rules.effects import get_effect, can_modify, Flip, Retarget
 from game.rules.card import Card
+from game.rules.phases import Idle, Selected, Targeting, Phase, GameOver
 
 class GameController:
     def __init__(self, game_state: GameState) -> None:
         self.game_state = game_state
-        self.pending_targets: list[Coord] = []
+        self.phase: Phase = Idle()
         
-    def _handle_tile(self, clicked_tile: ClickedTile) -> None:
-        def append_card():
-            if clicked_tile.coord in self.pending_targets:
-                return
-            self.pending_targets.append(clicked_tile.coord)
-            self._try_execute()
-        if self.game_state.selected_card is None:
-            return
-        targets = self.game_state.selected_card.targets
-        match targets:
-            case ChooseAny():
-                append_card()
-            case ChooseFrom(coords=coords):
-                if clicked_tile.coord in coords:
-                    append_card()
-            case Fixed():
-                return
+    @property
+    def selected_card(self) -> Card | None:
+        match self.phase:
+            case Idle() | GameOver():
+                return None
+            case Selected(index=index) | Targeting(index=index):
+                return self.game_state.hand[index]
             case _:
-                raise ValueError(f"unresolved case '{targets}'")
+                raise ValueError(f"unhandled phase {self.phase}")
         
-    def _handle_card(self, clicked_card: ClickedCard) -> None:
-        def select_card() -> None:
-            self.game_state.select(clicked_card.index)
-            self._try_execute()
-        if self.game_state.selected_index is None:
-            select_card()
-        elif self.game_state.selected_index != clicked_card.index:
-            self._clear_selection()
-            select_card()
-        else:
-            self._clear_selection()
+    def _require_valid_index(self, index: int) -> None:
+        if not 0 <= index < len(self.game_state.hand):
+            raise IndexError(f"{index} is out of bounds for a hand of {len(self.game_state.hand)}")
         
-    def _clear_selection(self) -> None:
-        self.game_state.clear_selection()
-        self.pending_targets.clear()
+    def _remove_card(self, index: int) -> None:
+        self._require_valid_index(index)
+        self.game_state.hand.pop(index)
         
-    def _check_complete(self, target_spec: TargetSpec) -> bool:
-        match target_spec:
-            case Fixed():
-                return True
-            case ChooseAny(count=count) | ChooseFrom(count=count):
-                return count == len(self.pending_targets)
-            case _:
-                raise ValueError(f"unresolved case '{target_spec}'")
-            
-    def _try_execute(self) -> None:
-        if self.game_state.selected_index is not None:
-            index = self.game_state.selected_index
-            card = self.game_state.hand[index]
-            if self._check_complete(card.targets):
-                self._execute(index, card)
-                
-    def _execute(self, index: int, card: Card) -> None:
-        if self.game_state.plays_remaining == 0:
-            self._clear_selection()
+    def _handle_idle(self, intent: Intent) -> None:
+        if not self.game_state.can_play:
+            self.phase = GameOver()
             return
-        def apply_effect(coords: tuple[Coord, ...]) -> None:
-            get_effect(card.effect_id).apply(self.game_state.board, coords)
+        match intent:
+            case ClickedTile() | ClickedNothing():
+                return
+            case ClickedCard(index=index):
+                self.phase = Selected(index)
+            case _: raise ValueError(f"unhandled intent {intent}")
+        
+    def _handle_selected(self, intent: Intent, phase: Selected) -> None:
+        match intent:
+            case ClickedNothing() | ClickedTile():
+                self.phase = Idle()
+            case ClickedCard(index=clicked_index):
+                if phase.index == clicked_index:
+                    self.phase = Targeting(phase.index)
+                    self._try_execute(self.phase)
+                else:
+                    self.phase = Selected(clicked_index)
+            case _: raise ValueError(f"unhandled intent {intent}")
+        
+    def _handle_targeting(self, intent: Intent, phase: Targeting) -> None:
+        card = self.game_state.hand[phase.index]
         match card.targets:
-            case Fixed(coords=coords):
-                apply_effect(coords)
-            case ChooseFrom() | ChooseAny():
-                apply_effect(tuple(self.pending_targets))
+            case ChooseCard():
+                self._handle_targeting_card(intent, phase)
+            case ChooseFrom() | ChooseAny() | Fixed():
+                self._handle_targeting_tile(intent, phase)
             case _:
-                raise ValueError(f"unresolved case '{card.targets}'")
+                raise ValueError(f"unhandled target {card.targets}")
+        
+    def _handle_targeting_card(self, intent: Intent, phase: Targeting) -> None:
+        match intent:
+            case ClickedNothing() | ClickedTile():
+                self.phase = Idle()
+            case ClickedCard(index=index):
+                card = self.game_state.hand[index]
+                current_card = self.game_state.hand[phase.index]
+                effect = get_effect(current_card.effect_id)
+                spec = card.targets
+                if can_modify(effect, spec):
+                    self.phase = replace(phase, card=index)
+                    self._try_execute(self.phase)
+            case _: raise ValueError(f"unhandled intent {intent}")
+        
+    def _handle_targeting_tile(self, intent: Intent, phase: Targeting) -> None:
+        match intent:
+            case ClickedNothing() | ClickedCard():
+                self.phase = Idle()
+            case ClickedTile(coord=coord):
+                card = self.game_state.hand[phase.index]
+                if is_candidate(card.targets, coord) and coord not in phase.coords:
+                    new_phase = replace(phase, coords=phase.coords + (coord,))
+                    self.phase = new_phase
+                    self._try_execute(new_phase)
+            case _: raise ValueError(f"unhandled intent {intent}")
+                
+    def _try_execute(self, phase: Targeting) -> None:
+        card = self.game_state.hand[phase.index]
+        match card.targets:
+            case ChooseCard():
+                if phase.card is not None:
+                    self._execute(card, phase)
+            case ChooseAny() | ChooseFrom() | Fixed():
+                if len(phase.coords) == required_coords(card.targets):
+                    self._execute(card, phase)
+            case _: raise ValueError(f"unhandled target {card.targets}")
+            
+    def _resolve_coords(self, spec: TargetSpec, phase: Targeting) -> tuple[Coord, ...]:
+        match spec:
+            case Fixed(coords=coords):
+                return coords
+            case ChooseFrom() | ChooseAny():
+                return phase.coords
+            case _: raise ValueError(f"unhandled target {spec}")
+        
+    def _execute(self, card: Card, phase: Targeting) -> None:
+        effect = get_effect(card.effect_id)
+        match effect:
+            case Flip():
+                coords = self._resolve_coords(card.targets, phase)
+                effect.apply(self.game_state.board, coords)
+            case Retarget():
+                if phase.card is None:
+                    raise ValueError(f"{repr(phase.card)} is none during execute")
+                target_card = self.game_state.hand[phase.card]
+                new_card = effect.apply(target_card)
+                self.game_state.add_card(new_card)
+            case _: raise ValueError(f"unhandled effect {effect}")
         self.game_state.spend_play()
         if card.single_use:
-            self.game_state.remove_card(index)
-        self._clear_selection()
+            self._remove_card(phase.index)
+        if self.game_state.can_play:
+            self.phase = Idle()
+        else:
+            self.phase = GameOver()
         
         
     def handle(self, intent: Intent) -> None:
-        match intent:
-            case ClickedTile():
-                self._handle_tile(intent)
-            case ClickedCard():
-                self._handle_card(intent)
-            case ClickedNothing():
-                self._clear_selection()
+        match self.phase:
+            case GameOver():
+                return
+            case Idle():
+                self._handle_idle(intent)
+            case Selected() as phase:
+                self._handle_selected(intent, phase)
+            case Targeting() as phase:
+                self._handle_targeting(intent, phase)
             case _:
-                raise ValueError(f"unhandled intent {intent}")
+                raise ValueError(f"unhandled phase {self.phase}")

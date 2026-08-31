@@ -29,6 +29,7 @@ def main() -> None:
             intent = translate(event, layouts)
             if intent is not None:
                 controller.handle(intent)
+                layouts = ScreenLayout(screen.get_rect(), state.board.size, len(state.hand))
         screen.fill(BACKGROUND)
         renderer.draw(screen, layouts, state.board, state.hand)
 

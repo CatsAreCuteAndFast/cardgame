@@ -2,7 +2,7 @@ import pygame
 from game.view.board_layout import BoardLayout
 from game.view.hand_layout import HandLayout
 
-HAND_FRACTION = 0.25
+HAND_FRACTION = 0.20
 
 class ScreenLayout:
     def __init__(self, area: pygame.Rect, board_size: tuple[int, int], card_count: int) -> None:

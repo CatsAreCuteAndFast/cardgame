@@ -3,12 +3,12 @@ from game.core.tiletype import get_type as get_tile_type
 from game.core.tile import Tile
 from game.rules.card import Card
 from game.core.board import Board
-from game.rules.targets import ChooseAny, ChooseFrom, Fixed
+from game.rules.targets import ChooseAny, ChooseFrom, Fixed, ChooseCard
 from game.core.coord import Coord
-from game.rules.effects import get_effect
+from game.rules.effects import get_effect, accepts
 
 PLAY_BUDGET = 1000
-CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2), single_use=True))
+CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2)), Card("retarget", ChooseCard()))
 TILE_LIST = (("basic", "basic", "basic"),
              ("basic", "basic", "basic"),
              ("basic", "basic", "basic"))
@@ -43,11 +43,14 @@ class Level:
                     raise ValueError(f"unknown tile type '{tile_id}' at {row_index}x{col_index}") from None
                 
         for index, card in enumerate(self.card_list):
-            self._check_targets(card, index)
             try:
                 get_effect(card.effect_id)
             except KeyError:
                 raise ValueError(f"Unknown effect '{card.effect_id}' at index {index}") from None
+            effect = get_effect(card.effect_id)
+            if not accepts(effect, card.targets):
+                raise ValueError(f"effect {effect} doesnt accept targeting of type {card.targets}")
+            self._check_targets(card, index)
             
     def _check_targets(self, card: Card, index: int) -> None:
         width, height = self.size
@@ -61,14 +64,12 @@ class Level:
                     )
 
         match card.targets:
+            case ChooseCard():
+                return
             case Fixed(coords=coords):
                 check(coords)
-            case ChooseFrom(coords=coords, count=count):
+            case ChooseFrom(coords=coords):
                 check(coords)
-                if not 1 <= count <= len(coords):
-                    raise ValueError(
-                        f"card {index} picks {count} from {len(coords)} candidates"
-                    )
             case ChooseAny(count=count):
                 if not 1 <= count <= width * height:
                     raise ValueError(
