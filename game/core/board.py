@@ -41,6 +41,12 @@ class Board:
     def iterate_tiles(self):
         for index, tile in enumerate(self.tiles):
             yield self._coord(index), tile
+            
+    def swap_tiles(self, a: Coord, b: Coord) -> None:
+        if not (self.in_bounds(a) and self.in_bounds(b)):
+            raise ValueError(f"{a} or {b} is outside of bounds ({self.width}x{self.height})")
+        i, j = self._index(a), self._index(b)
+        self.tiles[i], self.tiles[j] = self.tiles[j], self.tiles[i]
         
     def __repr__(self) -> str:
         return f"Board({self.width}x{self.height}, {len(self.tiles)} tiles)"

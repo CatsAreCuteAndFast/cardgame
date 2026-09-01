@@ -8,11 +8,11 @@ from game.core.coord import Coord
 from game.rules.effects import get_effect, accepts
 
 PLAY_BUDGET = 1000
-CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2)), Card("retarget", ChooseCard()))
-TILE_LIST = (("basic", "basic", "basic"),
+CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2)), Card("retarget", ChooseCard()), Card("swap", ChooseAny(count=2)))
+TILE_LIST = (("basic", "basic", "notflippable"),
              ("basic", "basic", "basic"),
-             ("basic", "basic", "basic"))
-SIZE = (3, 4)
+             ("basic", "notflippable", "basic"))
+SIZE = (5, 5)
 def filled_tile_list() -> tuple[tuple[str, ...], ...]:
     width, height = SIZE
     return tuple(("basic",) * width for _ in range(height))
@@ -90,4 +90,4 @@ class Level:
         return Board((width, height), board_tile_list)
         
 def make_demo_level() -> Level:
-    return Level(PLAY_BUDGET, CARD_LIST, TEST_TILE_LIST)
+    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST)

@@ -2,7 +2,7 @@ from dataclasses import replace
 from game.core.board import Board
 from game.core.coord import Coord
 from game.rules.card import Card
-from game.rules.targets import ChooseFrom, Fixed, TargetSpec, ChooseCard
+from game.rules.targets import ChooseFrom, Fixed, TargetSpec, ChooseCard, ChooseAny
 
 class Flip:
     def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
@@ -28,10 +28,17 @@ class Retarget:
         if spec is None:
             raise ValueError(f"cannot retarget {card.targets}")
         return replace(card, targets=spec, single_use=True)
+    
+class Swap:
+    def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
+        if len(coords) != 2:
+            raise ValueError(f"Swap expects 2 coords instead got {len(coords)}")
+        board.swap_tiles(*coords)
         
-type Effect = Flip | Retarget
+        
+type Effect = Flip | Retarget | Swap
 
-_REGISTRY: dict[str, Effect] = {"flip": Flip(), "retarget": Retarget()}
+_REGISTRY: dict[str, Effect] = {"flip": Flip(), "retarget": Retarget(), "swap": Swap()}
             
 def get_effect(id: str) -> Effect:
     return _REGISTRY[id]
@@ -51,5 +58,7 @@ def accepts(effect: Effect, spec: TargetSpec) -> bool:
             return not isinstance(spec, ChooseCard)
         case Retarget():
             return isinstance(spec, ChooseCard)
+        case Swap():
+            return isinstance(spec, ChooseAny) and spec.count == 2
         case _:
             raise ValueError(f"unhandled effect '{effect}'")

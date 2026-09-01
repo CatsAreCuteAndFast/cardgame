@@ -3,7 +3,7 @@ from game.rules.game_state import GameState
 from game.core.coord import Coord
 from game.rules.intents import Intent, ClickedTile, ClickedCard, ClickedNothing
 from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom, required_coords, ChooseCard, is_candidate
-from game.rules.effects import get_effect, can_modify, Flip, Retarget
+from game.rules.effects import get_effect, can_modify, Flip, Retarget, Swap
 from game.rules.card import Card
 from game.rules.phases import Idle, Selected, Targeting, Phase, GameOver
 
@@ -111,7 +111,7 @@ class GameController:
     def _execute(self, card: Card, phase: Targeting) -> None:
         effect = get_effect(card.effect_id)
         match effect:
-            case Flip():
+            case Flip() | Swap():
                 coords = self._resolve_coords(card.targets, phase)
                 effect.apply(self.game_state.board, coords)
             case Retarget():
