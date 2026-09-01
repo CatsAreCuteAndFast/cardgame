@@ -31,6 +31,7 @@ class Retarget:
     
 class Swap:
     def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
+        if not all(board.get(c).type.can_swap for c in coords): return
         if len(coords) != 2:
             raise ValueError(f"Swap expects 2 coords instead got {len(coords)}")
         board.swap_tiles(*coords)
@@ -62,3 +63,14 @@ def accepts(effect: Effect, spec: TargetSpec) -> bool:
             return isinstance(spec, ChooseAdjacent) and spec.count == 2
         case _:
             raise ValueError(f"unhandled effect '{effect}'")
+        
+def can_target(effect: Effect, board: Board, coord: Coord) -> bool:
+    match effect:
+        case Flip():
+            return board.get(coord).type.can_flip
+        case Retarget():
+            return False
+        case Swap():
+            return board.get(coord).type.can_swap
+        case _:
+            raise ValueError(f"unhandled effect {effect}")

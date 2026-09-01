@@ -10,8 +10,8 @@ from game.rules.effects import get_effect, accepts
 PLAY_BUDGET = 1000
 CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2)), Card("retarget", ChooseCard()), Card("swap", ChooseAdjacent()))
 TILE_LIST = (("basic", "basic", "notflippable"),
-             ("basic", "basic", "basic"),
-             ("basic", "notflippable", "basic"))
+             ("basic", "notswappable", "basic"),
+             ("basic", "notflippable", "notswappable"))
 SIZE = (5, 5)
 def filled_tile_list() -> tuple[tuple[str, ...], ...]:
     width, height = SIZE

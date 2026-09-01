@@ -3,7 +3,7 @@ from game.rules.game_state import GameState
 from game.core.coord import Coord
 from game.rules.intents import Intent, ClickedTile, ClickedCard, ClickedNothing
 from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom, required_coords, ChooseCard, is_candidate, ChooseAdjacent
-from game.rules.effects import get_effect, can_modify, Flip, Retarget, Swap
+from game.rules.effects import get_effect, can_modify, Flip, Retarget, Swap, can_target
 from game.rules.card import Card
 from game.rules.phases import Idle, Selected, Targeting, Phase, GameOver
 
@@ -83,7 +83,8 @@ class GameController:
                 self.phase = Idle()
             case ClickedTile(coord=coord):
                 card = self.game_state.hand[phase.index]
-                if is_candidate(card.targets, phase.coords, coord):
+                effect = get_effect(card.effect_id)
+                if is_candidate(card.targets, phase.coords, coord) and can_target(effect, self.game_state.board, coord):
                     new_phase = replace(phase, coords=phase.coords + (coord,))
                     self.phase = new_phase
                     self._try_execute(new_phase)
