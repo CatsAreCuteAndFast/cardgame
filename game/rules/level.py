@@ -3,12 +3,12 @@ from game.core.tiletype import get_type as get_tile_type
 from game.core.tile import Tile
 from game.rules.card import Card
 from game.core.board import Board
-from game.rules.targets import ChooseAny, ChooseFrom, Fixed, ChooseCard
+from game.rules.targets import ChooseAny, ChooseFrom, Fixed, ChooseCard, ChooseAdjacent
 from game.core.coord import Coord
 from game.rules.effects import get_effect, accepts
 
 PLAY_BUDGET = 1000
-CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2)), Card("retarget", ChooseCard()), Card("swap", ChooseAny(count=2)))
+CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2)), Card("retarget", ChooseCard()), Card("swap", ChooseAdjacent()))
 TILE_LIST = (("basic", "basic", "notflippable"),
              ("basic", "basic", "basic"),
              ("basic", "notflippable", "basic"))
@@ -44,10 +44,9 @@ class Level:
                 
         for index, card in enumerate(self.card_list):
             try:
-                get_effect(card.effect_id)
+                effect = get_effect(card.effect_id)
             except KeyError:
                 raise ValueError(f"Unknown effect '{card.effect_id}' at index {index}") from None
-            effect = get_effect(card.effect_id)
             if not accepts(effect, card.targets):
                 raise ValueError(f"effect {effect} doesnt accept targeting of type {card.targets}")
             self._check_targets(card, index)
@@ -70,7 +69,7 @@ class Level:
                 check(coords)
             case ChooseFrom(coords=coords):
                 check(coords)
-            case ChooseAny(count=count):
+            case ChooseAny(count=count) | ChooseAdjacent(count=count):
                 if not 1 <= count <= width * height:
                     raise ValueError(
                         f"card {index} picks {count} from a {width*height}-tile board"

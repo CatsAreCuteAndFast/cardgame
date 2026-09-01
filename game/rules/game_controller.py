@@ -2,7 +2,7 @@ from dataclasses import replace
 from game.rules.game_state import GameState
 from game.core.coord import Coord
 from game.rules.intents import Intent, ClickedTile, ClickedCard, ClickedNothing
-from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom, required_coords, ChooseCard, is_candidate
+from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom, required_coords, ChooseCard, is_candidate, ChooseAdjacent
 from game.rules.effects import get_effect, can_modify, Flip, Retarget, Swap
 from game.rules.card import Card
 from game.rules.phases import Idle, Selected, Targeting, Phase, GameOver
@@ -58,7 +58,7 @@ class GameController:
         match card.targets:
             case ChooseCard():
                 self._handle_targeting_card(intent, phase)
-            case ChooseFrom() | ChooseAny() | Fixed():
+            case ChooseFrom() | ChooseAny() | Fixed() | ChooseAdjacent():
                 self._handle_targeting_tile(intent, phase)
             case _:
                 raise ValueError(f"unhandled target {card.targets}")
@@ -83,7 +83,7 @@ class GameController:
                 self.phase = Idle()
             case ClickedTile(coord=coord):
                 card = self.game_state.hand[phase.index]
-                if is_candidate(card.targets, coord) and coord not in phase.coords:
+                if is_candidate(card.targets, phase.coords, coord):
                     new_phase = replace(phase, coords=phase.coords + (coord,))
                     self.phase = new_phase
                     self._try_execute(new_phase)
@@ -95,7 +95,7 @@ class GameController:
             case ChooseCard():
                 if phase.card is not None:
                     self._execute(card, phase)
-            case ChooseAny() | ChooseFrom() | Fixed():
+            case ChooseAny() | ChooseFrom() | Fixed() | ChooseAdjacent():
                 if len(phase.coords) == required_coords(card.targets):
                     self._execute(card, phase)
             case _: raise ValueError(f"unhandled target {card.targets}")
@@ -104,7 +104,7 @@ class GameController:
         match spec:
             case Fixed(coords=coords):
                 return coords
-            case ChooseFrom() | ChooseAny():
+            case ChooseFrom() | ChooseAny() | ChooseAdjacent():
                 return phase.coords
             case _: raise ValueError(f"unhandled target {spec}")
         

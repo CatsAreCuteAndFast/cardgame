@@ -2,7 +2,7 @@ from dataclasses import replace
 from game.core.board import Board
 from game.core.coord import Coord
 from game.rules.card import Card
-from game.rules.targets import ChooseFrom, Fixed, TargetSpec, ChooseCard, ChooseAny
+from game.rules.targets import ChooseFrom, Fixed, TargetSpec, ChooseCard, ChooseAdjacent
 
 class Flip:
     def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
@@ -47,7 +47,7 @@ def can_modify(effect: Effect, spec: TargetSpec) -> bool:
     match effect:
         case Retarget():
             return effect.can_modify(spec)
-        case Flip():
+        case Flip() | Swap():
             return False
         case _:
             raise ValueError(f"unhandled effect '{effect}'")
@@ -59,6 +59,6 @@ def accepts(effect: Effect, spec: TargetSpec) -> bool:
         case Retarget():
             return isinstance(spec, ChooseCard)
         case Swap():
-            return isinstance(spec, ChooseAny) and spec.count == 2
+            return isinstance(spec, ChooseAdjacent) and spec.count == 2
         case _:
             raise ValueError(f"unhandled effect '{effect}'")
