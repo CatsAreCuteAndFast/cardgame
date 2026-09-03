@@ -5,6 +5,7 @@ from game.rules.level import make_demo_level
 from game.rules.game_state import GameState
 from game.rules.game_controller import GameController
 from game.input.translate import translate
+from game.rules.view_state import build_view_state
 
 WINDOW_SIZE = (800, 600)
 BACKGROUND = "black"
@@ -23,6 +24,7 @@ def main() -> None:
     running = True
     while running:
         layouts = ScreenLayout(screen.get_rect(), state.board.size, len(state.hand))
+        view_state = build_view_state(state, controller.phase)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -30,6 +32,8 @@ def main() -> None:
             if intent is not None:
                 controller.handle(intent)
                 layouts = ScreenLayout(screen.get_rect(), state.board.size, len(state.hand))
+                view_state = build_view_state(state, controller.phase)
+                print(view_state)
         screen.fill(BACKGROUND)
         renderer.draw(screen, layouts, state.board, state.hand)
 
