@@ -2,11 +2,12 @@ import pygame
 from game.core.coord import Coord
 
 class BoardLayout:
-    def __init__(self, area: pygame.Rect, size: tuple[int, int], max_coverage: tuple[float, float] = (0.9, 0.9), gap_ratio: float = 0.1) -> None:
+    def __init__(self, area: pygame.Rect, size: tuple[int, int], max_coverage: tuple[float, float] = (0.9, 0.9), gap_ratio: float = 0.1, border_ratio=0.1) -> None:
         self.area = area
         self.width, self.height = size
         self.coverage_x, self.coverage_y = max_coverage
         self.gap_ratio = gap_ratio
+        self.border_ratio = border_ratio
 
         self._make_layout()
         
@@ -28,6 +29,8 @@ class BoardLayout:
         grid_h = self.step * self.height - self.gap_size
         self.origin_x = self.area.x + (self.area.width - grid_w) // 2
         self.origin_y = self.area.y + (self.area.height - grid_h) // 2
+        
+        self.border_size = int(self.tile_size * self.border_ratio)
         
     def in_bounds(self, coord: Coord) -> bool:
         return 0 <= coord.col < self.width and 0 <= coord.row < self.height

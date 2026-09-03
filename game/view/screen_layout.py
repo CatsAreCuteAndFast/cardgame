@@ -2,13 +2,14 @@ import pygame
 from game.view.board_layout import BoardLayout
 from game.view.hand_layout import HandLayout
 
-HAND_FRACTION = 0.20
+HAND_FRACTION = 0.25
+BORDER_RATIO = 0.12
 
 class ScreenLayout:
     def __init__(self, area: pygame.Rect, board_size: tuple[int, int], card_count: int) -> None:
         board_rect, hand_rect = self._split(area)
-        self.board = BoardLayout(board_rect, board_size)
-        self.hand = HandLayout(hand_rect, card_count)
+        self.board = BoardLayout(board_rect, board_size, border_ratio=BORDER_RATIO)
+        self.hand = HandLayout(hand_rect, card_count, border_ratio=BORDER_RATIO)
         
     def _split(self, area: pygame.Rect) -> tuple[pygame.Rect, pygame.Rect]:
         hand_height = int(area.height * HAND_FRACTION)

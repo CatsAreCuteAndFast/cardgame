@@ -12,7 +12,7 @@ class HandRenderer:
         font = pygame.font.Font(None, int(hand_layout.card_height * self.font_ratio))
         for index, card in enumerate(card_list):
             card_rect = hand_layout.rect_for(index)
-            pygame.draw.rect(surface, self.color, card_rect)
+            pygame.draw.rect(surface, self.color, card_rect, border_radius=hand_layout.border_size)
             text = font.render(card.label, False, "black")
             text_rect = text.get_rect(center=card_rect.center)
             surface.blit(text, text_rect)
