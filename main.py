@@ -33,8 +33,7 @@ def main() -> None:
                 layouts = ScreenLayout(screen.get_rect(), state.board.size, len(state.hand))
         screen.fill(BACKGROUND)
         view_state = build_view_state(state, controller.phase)
-        debug_strings = ["plays remaining: " + str(view_state.plays_remaining), "game over: " + str(view_state.game_over)]
-        renderer.draw(screen, layouts, state.board, state.hand, debug_strings)
+        renderer.draw(screen, layouts, state.board, view_state, state.hand)
         pygame.display.flip()
         clock.tick(FPS)
         

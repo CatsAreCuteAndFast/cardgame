@@ -2,24 +2,41 @@ import pygame
 from game.view.board_layout import BoardLayout
 from game.core.board import Board
 from game.core.tile import Tile
+from game.core.coord import Coord
+from game.rules.view_state import ViewState
+
+TILE_COLOR = (200, 200, 200)
+FLIPPED_COLOR = (150, 40, 40)
+CANDIDATE_COLOR = (140, 160, 200)
+TARGETING_COLOR = (100, 125, 190)
+PICKED_COLOR = (150, 65, 65)
 
 class BoardRenderer:
-    def __init__(self, tile_color=(200, 200, 200), flipped_color=(150, 0, 0), font_ratio=0.25) -> None:
-        self.tile_color = tile_color
-        self.flipped_color = flipped_color
+    def __init__(self, font_ratio=0.25) -> None:
         self.font_ratio = font_ratio
         
-    def draw(self, surface: pygame.Surface, board_layout: BoardLayout, board: Board):
+    def draw(self, surface: pygame.Surface, board_layout: BoardLayout, board: Board, view_state: ViewState) -> None:
         font = pygame.font.Font(None, int(board_layout.tile_size * self.font_ratio))
         for coord, tile in board.iterate_tiles():
             rect = board_layout.rect_for(coord)
             pygame.draw.rect(surface, self.color_tile(tile), rect, border_radius=board_layout.border_size)
-            text_surf = font.render(f"{tile.type.id},\n{coord.row}, {coord.col}", False, "black")
+            outline = self.outline_color(coord, view_state)
+            if outline is not None:
+                pygame.draw.rect(surface, outline, rect, width=board_layout.border_size // 2, border_radius=board_layout.border_size)
+            text_surf = font.render(f"{tile.type.id},\n{coord.row}, {coord.col}", True, "black")
             text_rect = text_surf.get_rect(center=rect.center)
             surface.blit(text_surf, text_rect)
             
     def color_tile(self, tile: Tile) -> tuple[int, int, int]:
         if tile.is_flipped:
-            return self.flipped_color
+            return FLIPPED_COLOR        
         else:
-            return self.tile_color
+            return TILE_COLOR
+        
+    def outline_color(self, coord: Coord, view_state: ViewState) -> None | tuple[int, int, int]:
+        if coord in view_state.picked:
+            return PICKED_COLOR
+        elif coord in view_state.candidate_tiles and view_state.is_targeting:
+            return TARGETING_COLOR
+        elif coord in view_state.candidate_tiles:
+            return CANDIDATE_COLOR

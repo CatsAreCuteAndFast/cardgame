@@ -30,7 +30,7 @@ class BoardLayout:
         self.origin_x = self.area.x + (self.area.width - grid_w) // 2
         self.origin_y = self.area.y + (self.area.height - grid_h) // 2
         
-        self.border_size = int(self.tile_size * self.border_ratio)
+        self.border_size = max(1, int(self.tile_size * self.border_ratio))
         
     def in_bounds(self, coord: Coord) -> bool:
         return 0 <= coord.col < self.width and 0 <= coord.row < self.height

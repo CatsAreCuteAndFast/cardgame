@@ -58,9 +58,7 @@ def is_candidate(spec: TargetSpec, picked: tuple[Coord, ...], coord: Coord) -> b
     if coord in picked:
         return False
     match spec:
-        case Fixed():
-            return False
-        case ChooseFrom(coords=coords):
+        case ChooseFrom(coords=coords) | Fixed(coords=coords):
             return coord in coords
         case ChooseAny():
             return True

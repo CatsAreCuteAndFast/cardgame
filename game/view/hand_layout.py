@@ -43,7 +43,7 @@ class HandLayout:
         self.origin_x = self.area.x + (self.area.width - total_width) // 2
         self.origin_y = self.area.y + (self.area.height - self.card_height) // 2
         
-        self.border_size = int(self.card_width * self.border_ratio)
+        self.border_size = max(1, int(self.card_width * self.border_ratio))
         
     def rect_for(self, index: int) -> pygame.Rect:
         if not 0 <= index < self.card_count:
