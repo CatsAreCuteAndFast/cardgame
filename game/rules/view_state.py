@@ -43,7 +43,7 @@ def build_view_state(state: GameState, phase: Phase) -> ViewState:
         case Selected(index=index):
             candidate_tiles, candidate_cards = _candidates(state, index, ())
             return ViewState(state.plays_remaining, selected=index, candidate_tiles=candidate_tiles, candidate_cards=candidate_cards)
-        case Targeting(index, coords=coords):
+        case Targeting(index=index, coords=coords):
             candidate_tiles, candidate_cards = _candidates(state, index, coords)
             return ViewState(state.plays_remaining, picked=coords, candidate_tiles=candidate_tiles, candidate_cards=candidate_cards, selected=index, is_targeting=True)
         case _:

@@ -24,7 +24,6 @@ def main() -> None:
     running = True
     while running:
         layouts = ScreenLayout(screen.get_rect(), state.board.size, len(state.hand))
-        view_state = build_view_state(state, controller.phase)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -32,11 +31,10 @@ def main() -> None:
             if intent is not None:
                 controller.handle(intent)
                 layouts = ScreenLayout(screen.get_rect(), state.board.size, len(state.hand))
-                view_state = build_view_state(state, controller.phase)
-                print(view_state)
         screen.fill(BACKGROUND)
-        renderer.draw(screen, layouts, state.board, state.hand)
-
+        view_state = build_view_state(state, controller.phase)
+        debug_strings = ["plays remaining: " + str(view_state.plays_remaining), "game over: " + str(view_state.game_over)]
+        renderer.draw(screen, layouts, state.board, state.hand, debug_strings)
         pygame.display.flip()
         clock.tick(FPS)
         
