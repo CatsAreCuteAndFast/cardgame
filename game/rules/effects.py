@@ -1,14 +1,28 @@
 from dataclasses import replace
+from game.core.tile import Tile
 from game.core.board import Board
 from game.core.coord import Coord
 from game.rules.card import Card
 from game.rules.targets import ChooseFrom, Fixed, TargetSpec, ChooseCard, ChooseAdjacent
 
 class Flip:
+    def _expand(self, board: Board, coords: tuple[Coord, ...]) -> set[Coord]:
+        affected: set[Coord] = set()
+        for coord in coords:
+            tile = board.get(coord)
+            if not tile.type.can_flip:
+                continue
+            link = tile.link
+            if link is None:
+                affected.add(coord)
+            else:
+                for other_coord, other_tile in board.iterate_tiles():
+                    if other_tile.link == link:
+                        affected.add(other_coord)
+        return affected
     def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
-        target_tiles = [board.get(coord) for coord in coords]
-        for tile in target_tiles:
-            tile.flip()
+        for coord in self._expand(board, coords):
+            board.get(coord).flip()
             
 class Retarget:
     def _convert(self, spec: TargetSpec) -> TargetSpec | None:

@@ -4,7 +4,7 @@ from game.view.board_layout import BoardLayout
 from game.view.hand_layout import HandLayout
 
 HAND_FRACTION = 0.25
-BORDER_RATIO = 0.2
+BORDER_RATIO = 0.17
 DEBUG_PANEL_FRACTION = 0.05
 
 class ScreenLayout:
