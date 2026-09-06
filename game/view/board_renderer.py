@@ -22,10 +22,17 @@ class BoardRenderer:
             pygame.draw.rect(surface, self.color_tile(tile), rect, border_radius=board_layout.border_size)
             outline = self.outline_color(coord, view_state)
             if outline is not None:
-                pygame.draw.rect(surface, outline, rect, width=board_layout.border_size // 2, border_radius=board_layout.border_size)
-            text_surf = font.render(f"{tile.type.id},\n{coord.row}, {coord.col}", True, "black")
+                pygame.draw.rect(surface, outline, rect, width=max(1, board_layout.border_size // 2), border_radius=board_layout.border_size)
+            text_surf = font.render(self._explain_tile(tile, coord), True, "black")
             text_rect = text_surf.get_rect(center=rect.center)
             surface.blit(text_surf, text_rect)
+            
+    def _explain_tile(self, tile: Tile, coord: Coord) -> str:
+        parts: list[str] = [tile.type.id, f"{coord.row}, {coord.col}"]
+        if tile.link is not None:
+            parts.append(f"link: {tile.link}")
+        return "\n".join(parts)
+        
             
     def color_tile(self, tile: Tile) -> tuple[int, int, int]:
         if tile.is_flipped:
