@@ -6,12 +6,17 @@ from game.core.board import Board
 from game.rules.targets import ChooseAny, ChooseFrom, Fixed, ChooseCard, ChooseAdjacent
 from game.core.coord import Coord
 from game.rules.effects import get_effect, accepts
+from game.core.substrate import Substrate
+from game.core.substratetype import get_substrate_type
 
 PLAY_BUDGET = 1000
 CARD_LIST = (Card("flip", Fixed((Coord(0, 1), Coord(2, 2)))), Card("flip", ChooseFrom((Coord(1, 1), Coord(2, 0), Coord(2, 2)))), Card("flip", ChooseAny(2)), Card("retarget", ChooseCard()), Card("swap", ChooseAdjacent()))
 TILE_LIST = (("basic", "basic", "notflippable"),
              ("basic", "notswappable", "basic"),
              ("basic", "notflippable", "notswappable"))
+SUBSTRATE_LIST = (("plain", "plain", "plain"), 
+                  ("plain", "oneturn", "twoturn"),
+                  ("plain", "oneturn", "plain"))
 LINKED_LIST = ((Coord(0, 1), Coord(2, 0)),)
 SIZE = (5, 5)
 def filled_tile_list() -> tuple[tuple[str, ...], ...]:
@@ -24,6 +29,7 @@ class Level:
     play_budget: int
     card_list: tuple[Card, ...]
     tile_list: tuple[tuple[str, ...], ...]
+    substrate_list: tuple[tuple[str, ...], ...]
     linked_list: tuple[tuple[Coord, ...], ...] = ()
     
     @property 
@@ -31,6 +37,12 @@ class Level:
         return (len(self.tile_list[0]), len(self.tile_list))
     
     def __post_init__(self) -> None:
+        self._check_tiles()
+        self._check_substrates()
+        self._check_cards()
+        self._check_links()
+        
+    def _check_tiles(self) -> None:
         if not self.tile_list:
             raise ValueError("Level has no tiles")
         
@@ -44,6 +56,7 @@ class Level:
                 except KeyError:
                     raise ValueError(f"unknown tile type '{tile_id}' at {row_index}x{col_index}") from None
                 
+    def _check_cards(self) -> None:
         for index, card in enumerate(self.card_list):
             try:
                 effect = get_effect(card.effect_id)
@@ -53,8 +66,20 @@ class Level:
                 raise ValueError(f"effect {effect} doesnt accept targeting of type {card.targets}")
             self._check_targets(card, index)
             
-        self._check_links()
-            
+    def _check_substrates(self) -> None:
+        width, height = self.size
+        if len(self.substrate_list) != height:
+            raise ValueError(f"substrate grid has {len(self.substrate_list)} rows, expected {height}")
+        
+        for row_index, substrate_row in enumerate(self.substrate_list):
+            if len(substrate_row) != width:
+                raise ValueError(f"row has {len(substrate_row)} substrates instead of expected {width}")
+            for col_index, substrate_id in enumerate(substrate_row):
+                try:
+                    get_substrate_type(substrate_id)
+                except KeyError:
+                    raise ValueError(f"unknown substrate type '{substrate_id}' at {row_index}x{col_index}") from None
+               
     def _check_targets(self, card: Card, index: int) -> None:
         width, height = self.size
 
@@ -108,7 +133,13 @@ class Level:
             for row_index, row in enumerate(self.tile_list)
             for col_index, tile_id in enumerate(row)
         ]
-        return Board((width, height), board_tile_list)
+        
+        board_substrate_list = [Substrate(get_substrate_type(substrate_id))
+            for substrate_row in self.substrate_list
+            for substrate_id in substrate_row
+        ]
+        
+        return Board((width, height), board_tile_list, board_substrate_list)
         
 def make_demo_level() -> Level:
-    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST, linked_list=LINKED_LIST)
+    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST, SUBSTRATE_LIST, linked_list=LINKED_LIST)
