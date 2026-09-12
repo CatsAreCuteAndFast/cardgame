@@ -81,7 +81,7 @@ def accepts(effect: Effect, spec: TargetSpec) -> bool:
 def can_target(effect: Effect, board: Board, coord: Coord) -> bool:
     match effect:
         case Flip():
-            return board.get(coord).type.can_flip
+            return board.get(coord).type.can_flip and board.get_substrate(coord).is_ready
         case Retarget():
             return False
         case Swap():

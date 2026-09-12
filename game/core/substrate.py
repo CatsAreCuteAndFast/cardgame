@@ -8,6 +8,10 @@ class Substrate:
     
     def __post_init__(self) -> None:
         self.counter = self.type.period
+        
+    @property
+    def is_ready(self) -> bool:
+        return self.counter == 0
 
     def tick(self) -> None:
         if self.type.period == 0:

@@ -122,7 +122,7 @@ class GameController:
                 new_card = effect.apply(target_card)
                 self.game_state.add_card(new_card)
             case _: raise ValueError(f"unhandled effect {effect}")
-        self.game_state.spend_play()
+        self.game_state.advance_turn()
         if card.single_use:
             self._remove_card(phase.index)
         if self.game_state.can_play:

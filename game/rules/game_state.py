@@ -15,8 +15,9 @@ class GameState:
     def add_card(self, card: Card) -> None:
         self.hand.append(card)
         
-    def spend_play(self) -> None:
+    def advance_turn(self) -> None:
         if self.plays_remaining <= 0:
             raise ValueError(f"{self.plays_remaining} already hit 0")
         else:
             self.plays_remaining -= 1
+        self.board.tick()
