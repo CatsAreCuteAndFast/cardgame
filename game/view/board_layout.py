@@ -43,6 +43,9 @@ class BoardLayout:
         
         return pygame.Rect(rect_origin_x, rect_origin_y, self.tile_size, self.tile_size)
     
+    def substrate_rect_for(self, coord: Coord) -> pygame.Rect:
+        return self.rect_for(coord).inflate(max(1, self.gap_size), max(1, self.gap_size))
+    
     def coord_at(self, pos: tuple[int, int]) -> Coord | None:
         pos_x, pos_y = pos
         coord_col = (pos_x - self.origin_x) // self.step

@@ -1,5 +1,4 @@
 from dataclasses import replace
-from game.core.tile import Tile
 from game.core.board import Board
 from game.core.coord import Coord
 from game.rules.card import Card
@@ -9,9 +8,8 @@ class Flip:
     def _expand(self, board: Board, coords: tuple[Coord, ...]) -> set[Coord]:
         affected: set[Coord] = set()
         for coord in coords:
-            tile = board.get(coord)
             if not _flip_allowed(board, coord): continue
-            link = tile.link
+            link = board.get(coord).link
             if link is None:
                 affected.add(coord)
             else:

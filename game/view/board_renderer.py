@@ -4,19 +4,34 @@ from game.core.board import Board
 from game.core.tile import Tile
 from game.core.coord import Coord
 from game.rules.view_state import ViewState
+from game.core.substrate import Substrate
 
 TILE_COLOR = (200, 200, 200)
 FLIPPED_COLOR = (150, 40, 40)
 CANDIDATE_COLOR = (140, 160, 200)
 TARGETING_COLOR = (100, 125, 190)
 PICKED_COLOR = (150, 65, 65)
+SUBSTRATE_COLORS = {
+    "oneturn": (70, 110, 80),
+    "twoturn": (120, 100, 50),
+}
 
 class BoardRenderer:
-    def __init__(self, font_ratio=0.25) -> None:
+    def __init__(self, font_ratio=0.25, timer_font_ratio=0.35) -> None:
         self.font_ratio = font_ratio
+        self.timer_font_ratio = timer_font_ratio
         
     def draw(self, surface: pygame.Surface, board_layout: BoardLayout, board: Board, view_state: ViewState) -> None:
         font = pygame.font.Font(None, int(board_layout.tile_size * self.font_ratio))
+        timer_font = pygame.font.Font(None, int(board_layout.tile_size * self.timer_font_ratio))
+        
+        for coord, substrate in board.iterate_substrates():
+            color = SUBSTRATE_COLORS.get(substrate.type.id)
+            rect = board_layout.substrate_rect_for(coord)
+            if color is None:
+                continue
+            pygame.draw.rect(surface, color, rect)
+        
         for coord, tile in board.iterate_tiles():
             rect = board_layout.rect_for(coord)
             pygame.draw.rect(surface, self.color_tile(tile), rect, border_radius=board_layout.border_size)
@@ -27,12 +42,18 @@ class BoardRenderer:
             text_rect = text_surf.get_rect(center=rect.center)
             surface.blit(text_surf, text_rect)
             
+            substrate = board.get_substrate(coord)
+            if substrate.type.period > 0: self.draw_timer(surface, timer_font, rect, substrate)
+            
     def _explain_tile(self, tile: Tile, coord: Coord) -> str:
         parts: list[str] = [tile.type.id, f"{coord.row}, {coord.col}"]
         if tile.link is not None:
             parts.append(f"link: {tile.link}")
         return "\n".join(parts)
-        
+    
+    def draw_timer(self, surface: pygame.Surface, font: pygame.Font, rect: pygame.Rect, substrate: Substrate, inset: int=0) -> None:    
+        text = font.render(str(substrate.counter), True, "black")
+        surface.blit(text, text.get_rect(topright=(rect.right - inset, rect.top + inset)))
             
     def color_tile(self, tile: Tile) -> tuple[int, int, int]:
         if tile.is_flipped:
