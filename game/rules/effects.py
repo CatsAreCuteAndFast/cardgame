@@ -10,8 +10,7 @@ class Flip:
         affected: set[Coord] = set()
         for coord in coords:
             tile = board.get(coord)
-            if not tile.type.can_flip:
-                continue
+            if not _flip_allowed(board, coord): continue
             link = tile.link
             if link is None:
                 affected.add(coord)
@@ -20,6 +19,7 @@ class Flip:
                     if other_tile.link == link:
                         affected.add(other_coord)
         return affected
+    
     def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
         for coord in self._expand(board, coords):
             board.get(coord).flip()
@@ -78,10 +78,13 @@ def accepts(effect: Effect, spec: TargetSpec) -> bool:
         case _:
             raise ValueError(f"unhandled effect '{effect}'")
         
+def _flip_allowed(board: Board, coord: Coord) -> bool:
+    return board.get(coord).type.can_flip and board.get_substrate(coord).is_ready
+        
 def can_target(effect: Effect, board: Board, coord: Coord) -> bool:
     match effect:
         case Flip():
-            return board.get(coord).type.can_flip and board.get_substrate(coord).is_ready
+            return _flip_allowed(board, coord)
         case Retarget():
             return False
         case Swap():
