@@ -7,7 +7,7 @@ from game.core.substratetype import get_substrate_type
 class Board:
     def __init__(self, size: tuple[int, int], tiles: list[Tile], substrates: list[Substrate]) -> None:
         self.width, self.height = size
-        self._check_length(tiles)
+        self._check_length(tiles, substrates)
         self.tiles = list(tiles)
         self.substrates = list(substrates)
         
@@ -25,10 +25,11 @@ class Board:
     def size(self) -> tuple[int, int]:
         return (self.width, self.height)
         
-    def _check_length(self, tiles: list[Tile]) -> None:
+    def _check_length(self, tiles: list[Tile], substrates: list[Substrate]) -> None:
         if len(tiles) != self.width * self.height:
             raise ValueError(f"Expected {self.width * self.height} tiles. Got {len(tiles)}")
-        
+        if len(substrates) != self.width * self.height:
+            raise ValueError(f"Expected {self.width * self.height} substrates. Got {len(tiles)}")
     def _index(self, coord: Coord):
         return self.width * coord.row + coord.col
     
