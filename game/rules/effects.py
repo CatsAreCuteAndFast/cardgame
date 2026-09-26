@@ -82,7 +82,7 @@ def _flip_allowed(board: Board, coord: Coord) -> bool:
 def can_target(effect: Effect, board: Board, coord: Coord) -> bool:
     match effect:
         case Flip():
-            return _flip_allowed(board, coord)
+            return True
         case Retarget():
             return False
         case Swap():
