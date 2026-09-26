@@ -73,7 +73,7 @@ class GameController:
                 effect = get_effect(current_card.effect_id)
                 spec = card.targets
                 if can_modify(effect, spec):
-                    self.phase = replace(phase, card=index)
+                    self.phase = replace(phase, target_index=index)
                     self._try_execute(self.phase)
             case _: raise ValueError(f"unhandled intent {intent}")
         
