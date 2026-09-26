@@ -30,7 +30,7 @@ class Level:
     card_list: tuple[Card, ...]
     tile_list: tuple[tuple[str, ...], ...]
     substrate_list: tuple[tuple[str, ...], ...]
-    linked_list: tuple[tuple[Coord, ...], ...] = ()
+    link_groups: tuple[tuple[Coord, ...], ...] = ()
     
     @property 
     def size(self) -> tuple[int, int]:
@@ -109,7 +109,7 @@ class Level:
     def _check_links(self) -> None:
         width, height = self.size
         seen: set[Coord] = set()
-        for index, group in enumerate(self.linked_list):
+        for index, group in enumerate(self.link_groups):
             if len(group) < 2:
                 raise ValueError(f"linked group {index} has {len(group)} members, must have at least 2")
             for coord in group:
@@ -124,7 +124,7 @@ class Level:
         
         link_of = {
             coord: str(index)
-            for index, group in enumerate(self.linked_list)
+            for index, group in enumerate(self.link_groups)
             for coord in group
         }
         
@@ -142,4 +142,4 @@ class Level:
         return Board((width, height), board_tile_list, board_substrate_list)
         
 def make_demo_level() -> Level:
-    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST, SUBSTRATE_LIST, linked_list=LINK_GROUPS)
+    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST, SUBSTRATE_LIST, link_groups=LINK_GROUPS)

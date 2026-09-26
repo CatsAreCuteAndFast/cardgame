@@ -29,7 +29,7 @@ class Board:
         if len(tiles) != self.width * self.height:
             raise ValueError(f"Expected {self.width * self.height} tiles. Got {len(tiles)}")
         if len(substrates) != self.width * self.height:
-            raise ValueError(f"Expected {self.width * self.height} substrates. Got {len(tiles)}")
+            raise ValueError(f"Expected {self.width * self.height} substrates. Got {len(substrates)}")
     def _index(self, coord: Coord):
         return self.width * coord.row + coord.col
     
