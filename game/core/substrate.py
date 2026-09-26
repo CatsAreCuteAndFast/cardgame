@@ -1,10 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from game.core.substratetype import SubstrateType
 
 @dataclass
 class Substrate:
     type: SubstrateType
-    counter: int = 0
+    counter: int = field(init=False)
     
     def __post_init__(self) -> None:
         self.counter = self.type.period

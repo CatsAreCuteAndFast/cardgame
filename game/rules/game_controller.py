@@ -94,7 +94,7 @@ class GameController:
         card = self.game_state.hand[phase.index]
         match card.targets:
             case ChooseCard():
-                if phase.card is not None:
+                if phase.target_index is not None:
                     self._execute(card, phase)
             case ChooseAny() | ChooseFrom() | Fixed() | ChooseAdjacent():
                 if len(phase.coords) == required_coords(card.targets):
@@ -116,9 +116,9 @@ class GameController:
                 coords = self._resolve_coords(card.targets, phase)
                 effect.apply(self.game_state.board, coords)
             case Retarget():
-                if phase.card is None:
-                    raise ValueError(f"{repr(phase.card)} is none during execute")
-                target_card = self.game_state.hand[phase.card]
+                if phase.target_index is None:
+                    raise ValueError(f"{repr(phase.target_index)} is none during execute")
+                target_card = self.game_state.hand[phase.target_index]
                 new_card = effect.apply(target_card)
                 self.game_state.add_card(new_card)
             case _: raise ValueError(f"unhandled effect {effect}")

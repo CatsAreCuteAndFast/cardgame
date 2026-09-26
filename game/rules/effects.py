@@ -9,7 +9,7 @@ class Flip:
         affected: set[Coord] = set()
         for coord in coords:
             if not _flip_allowed(board, coord): continue
-            link = board.get(coord).link
+            link = board.get_tile(coord).link
             if link is None:
                 affected.add(coord)
             else:
@@ -20,7 +20,7 @@ class Flip:
     
     def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
         for coord in self._expand(board, coords):
-            board.get(coord).flip()
+            board.get_tile(coord).flip()
             
 class Retarget:
     def _convert(self, spec: TargetSpec) -> TargetSpec | None:
@@ -43,9 +43,9 @@ class Retarget:
     
 class Swap:
     def apply(self, board: Board, coords: tuple[Coord, ...]) -> None:
-        if not all(board.get(c).type.can_swap for c in coords): return
         if len(coords) != 2:
             raise ValueError(f"Swap expects 2 coords instead got {len(coords)}")
+        if not all(board.get_tile(c).type.can_swap for c in coords): return
         board.swap_tiles(*coords)
         
         
@@ -77,15 +77,16 @@ def accepts(effect: Effect, spec: TargetSpec) -> bool:
             raise ValueError(f"unhandled effect '{effect}'")
         
 def _flip_allowed(board: Board, coord: Coord) -> bool:
-    return board.get(coord).type.can_flip and board.get_substrate(coord).is_ready
+    return board.get_tile(coord).type.can_flip and board.get_substrate(coord).is_ready
         
 def can_target(effect: Effect, board: Board, coord: Coord) -> bool:
     match effect:
         case Flip():
+            # picking is always legal for flip
             return True
         case Retarget():
             return False
         case Swap():
-            return board.get(coord).type.can_swap
+            return board.get_tile(coord).type.can_swap
         case _:
             raise ValueError(f"unhandled effect {effect}")

@@ -23,7 +23,6 @@ def _candidates(state: GameState, phase_index: int, picked: tuple[Coord, ...]) -
     match selected_card.targets:
         case ChooseCard():
             for index, card in enumerate(state.hand):
-                effect = get_effect(card.effect_id)
                 if can_modify(selected_effect, card.targets):
                     candidate_cards.append(index)
         case ChooseAny() | ChooseAdjacent() | Fixed() | ChooseFrom():

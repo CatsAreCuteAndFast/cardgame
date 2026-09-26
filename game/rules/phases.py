@@ -12,7 +12,7 @@ class Selected:
 class Targeting:
     index: int
     coords: tuple[Coord, ...] = ()
-    card: int | None = None
+    target_index: int | None = None
 
 @dataclass(frozen=True) 
 class GameOver: ...

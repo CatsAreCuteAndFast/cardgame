@@ -10,10 +10,4 @@ class Tile:
     def flip(self) -> None:
         self.is_flipped = not self.is_flipped
     
-    def set_flipped(self, value: bool) -> bool:
-        if self.is_flipped == value:
-            return False
-        self.is_flipped = value
-        return True
-    
         

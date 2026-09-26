@@ -18,7 +18,7 @@ class HandRenderer:
         font = pygame.font.Font(None, int(hand_layout.card_height * self.font_ratio))
         for index, card in enumerate(card_list):
             card_rect = hand_layout.rect_for(index)
-            pygame.draw.rect(surface, CARD_COLOR, card_rect, border_radius=hand_layout.border_size)
+            pygame.draw.rect(surface, CARD_COLOR, card_rect, border_radius=max(1, hand_layout.border_size))
             outline = self.outline(index, view_state)
             if outline is not None:
                 pygame.draw.rect(surface, outline, card_rect, width=hand_layout.border_size // 2, border_radius=hand_layout.border_size)

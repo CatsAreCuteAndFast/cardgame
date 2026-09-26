@@ -1,6 +1,6 @@
 from game.core.tile import Tile
 from game.core.coord import Coord
-from game.core.tiletype import get_type
+from game.core.tiletype import get_tile_type
 from game.core.substrate import Substrate
 from game.core.substratetype import get_substrate_type
 
@@ -17,7 +17,7 @@ class Board:
         tiles: list[Tile] = []
         substrates: list[Substrate] = []
         for _ in range(width * height):
-            tiles.append(Tile(get_type(id)))
+            tiles.append(Tile(get_tile_type(id)))
             substrates.append(Substrate(get_substrate_type("plain")))
         return cls(size, tiles, substrates)
     
@@ -38,7 +38,7 @@ class Board:
     def in_bounds(self, coord: Coord):
         return 0 <= coord.row < self.height and 0 <= coord.col < self.width
     
-    def get(self, coord: Coord) -> Tile:
+    def get_tile(self, coord: Coord) -> Tile:
         if not self.in_bounds(coord):
             raise ValueError(f"{coord} is outside of bounds ({self.width}x{self.height})")
         return self.tiles[self._index(coord)]

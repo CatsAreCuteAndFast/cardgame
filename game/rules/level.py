@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from game.core.tiletype import get_type as get_tile_type
+from game.core.tiletype import get_tile_type
 from game.core.tile import Tile
 from game.rules.card import Card
 from game.core.board import Board
@@ -17,7 +17,7 @@ TILE_LIST = (("basic", "basic", "notflippable"),
 SUBSTRATE_LIST = (("plain", "plain", "plain"), 
                   ("plain", "oneturn", "twoturn"),
                   ("plain", "oneturn", "plain"))
-LINKED_LIST = ((Coord(0, 1), Coord(2, 0)),)
+LINK_GROUPS = ((Coord(0, 1), Coord(2, 0)),)
 SIZE = (5, 5)
 def filled_tile_list() -> tuple[tuple[str, ...], ...]:
     width, height = SIZE
@@ -142,4 +142,4 @@ class Level:
         return Board((width, height), board_tile_list, board_substrate_list)
         
 def make_demo_level() -> Level:
-    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST, SUBSTRATE_LIST, linked_list=LINKED_LIST)
+    return Level(PLAY_BUDGET, CARD_LIST, TILE_LIST, SUBSTRATE_LIST, linked_list=LINK_GROUPS)

@@ -12,5 +12,5 @@ NOTSWAPPABLE = TileType("notswappable", can_swap=False)
     
 _REGISTRY = {t.id: t for t in (BASIC, NOTFLIPPABLE, NOTSWAPPABLE)}
 
-def get_type(id: str) -> TileType:
+def get_tile_type(id: str) -> TileType:
     return _REGISTRY[id]
