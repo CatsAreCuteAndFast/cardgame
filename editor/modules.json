@@ -16,6 +16,7 @@
  "game/rules/level.py",
  "game/rules/level_io.py",
  "game/rules/phases.py",
+ "game/rules/solver.py",
  "game/rules/targets.py",
  "game/rules/view_state.py"
 ]

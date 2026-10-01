@@ -6,6 +6,7 @@ const FOLDERS_KEY = "cardgame.folders";
 const MIN_SIZE = 1;
 const MAX_SIZE = 8;
 const MAX_BUDGET = 9999;
+const SOLVER_MAX_STATES = 50000;
 
 const SUBSTRATE_COLORS = { 1: "#466e50", 2: "#786432", 3: "#5a4a7a", 4: "#7a4a5a" };
 const LINK_COLORS = ["#c0392b", "#2e86c1", "#8e44ad", "#d68910", "#16a085", "#7f8c8d"];
@@ -28,6 +29,10 @@ let pickCard = null;
 let playSnapshot = null;
 let playLevelJson = null;
 let playError = null;
+let solver = null;
+let solveJob = 0;
+let solveTimer = null;
+let solve = { json: null, result: null, error: null };
 
 const $ = (id) => document.getElementById(id);
 
@@ -703,6 +708,7 @@ function renderEdit() {
   const validation = $("validation");
   validation.className = "validation " + (bridge ? (error ? "bad" : "good") : "");
   validation.textContent = !bridge ? "Rules are loading… validation will appear here." : error ? error : "Valid level";
+  queueSolve(bridge && !error ? JSON.stringify(data) : null);
 
   renderCards(data, width, height);
 }
@@ -976,6 +982,87 @@ function playTap(call) {
   render();
 }
 
+// ---------- solver ----------
+
+function queueSolve(json) {
+  if (json === solve.json) return renderSolver();
+  solve = { json, result: null, error: null };
+  clearTimeout(solveTimer);
+  solver?.postMessage({ id: ++solveJob, level: null });
+  if (json !== null) solveTimer = setTimeout(() => postSolve(json), 400);
+  renderSolver();
+}
+
+function postSolve(json) {
+  try {
+    if (!solver) {
+      solver = new Worker("solver-worker.js");
+      solver.onmessage = ({ data }) => {
+        if (data.id !== solveJob) return;
+        solve.result = data.result ?? null;
+        solve.error = data.error ?? null;
+        renderSolver();
+      };
+    }
+    solver.postMessage({ id: ++solveJob, level: json, maxStates: SOLVER_MAX_STATES });
+  } catch (error) {
+    solve.error = String(error.message ?? error);
+    renderSolver();
+  }
+}
+
+function plural(count, word) {
+  return `${count.toLocaleString()} ${word}${count === 1 ? "" : "s"}`;
+}
+
+function describeSolve() {
+  const result = solve.result;
+  if (solve.error) return ["bad", "Solver error: " + solve.error];
+  if (!result) return ["", "Solver: loading…"];
+  switch (result.status) {
+    case "running":
+      return ["", `Solving… ${plural(result.states, "position")} checked`];
+    case "solved": {
+      const count = result.solutions === 1 && result.counted_all ? "unique solution" : `${result.counted_all ? "" : "at least "}${plural(result.solutions, "solution")}`;
+      return ["good", `Solvable in ${plural(result.plays, "play")} · ${count}`];
+    }
+    case "unsolvable":
+      return ["bad", `No solution: ${result.reason}`];
+    case "gave_up":
+      return ["", `No solution in ${plural(result.searched, "play")} or fewer (stopped after ${plural(result.states, "position")})`];
+    default:
+      return ["bad", `Unknown solver result ${result.status}`];
+  }
+}
+
+function describeStep(step) {
+  const coords = step.coords.map(([r, c]) => `(${r},${c})`).join(" ");
+  const pick = step.target ? ` → ${step.target}` : coords ? ` → ${coords}` : "";
+  return `${step.card}${step.single_use ? " (single use)" : ""}${pick}`;
+}
+
+function renderSolver() {
+  const panel = $("solver");
+  panel.hidden = solve.json === null;
+  if (panel.hidden) return;
+  const [tone, text] = describeSolve();
+  panel.className = "solver " + tone;
+  $("solve-status").textContent = text;
+  const solved = solve.result?.status === "solved";
+  $("solve-play").hidden = !solved;
+  $("solve-steps").replaceChildren(...(solved ? solve.result.steps.map((step) => el("li", { textContent: describeStep(step) })) : []));
+}
+
+function playSolution() {
+  const level = current();
+  if (!level || !bridge || solve.result?.status !== "solved" || JSON.stringify(level.data) !== solve.json) return;
+  playLevelJson = solve.json;
+  playError = null;
+  playSnapshot = callBridge(() => bridge.start_solution(solve.json, JSON.stringify(solve.result.steps.map((step) => step.intents))));
+  setTab("play");
+  toast("Tap Redo to step through the solution");
+}
+
 // ---------- copy / import ----------
 
 async function copyText(text, title) {
@@ -1051,22 +1138,7 @@ function setTab(name) {
 async function loadRules() {
   toast("Loading game rules…", true);
   try {
-    const pyodide = await loadPyodide();
-    const fetchText = async (path) => {
-      const response = await fetch(path, { cache: "no-cache" });
-      if (!response.ok) throw new Error(`couldn't fetch ${path} (${response.status})`);
-      return response.text();
-    };
-    const modules = JSON.parse(await fetchText("modules.json"));
-    const sources = await Promise.all([...modules.map((path) => fetchText("../" + path)), fetchText("bridge.py")]);
-    const home = "/home/pyodide/";
-    modules.forEach((path, index) => {
-      pyodide.FS.mkdirTree(home + path.slice(0, path.lastIndexOf("/")));
-      pyodide.FS.writeFile(home + path, sources[index]);
-    });
-    pyodide.FS.writeFile(home + "bridge.py", sources[sources.length - 1]);
-    pyodide.runPython(`import sys\nif "${home}" not in sys.path: sys.path.insert(0, "${home}")`);
-    bridge = pyodide.pyimport("bridge");
+    bridge = await loadBridge();
     catalog = JSON.parse(bridge.catalog());
     brush.tiles = catalog.tiles[0].id;
     brush.substrates = catalog.substrates[0].id;
@@ -1117,6 +1189,7 @@ function init() {
     if (error && !confirm(`This level isn't valid yet:\n${error}\n\nCopy anyway?`)) return;
     copyText(formatLevel(level.data), level.name);
   });
+  $("solve-play").addEventListener("click", playSolution);
   $("play-reset").addEventListener("click", (e) => {
     e.stopPropagation();
     playSnapshot = null;

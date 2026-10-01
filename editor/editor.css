@@ -182,6 +182,15 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .validation.good { color: var(--good); }
 .validation.bad { color: var(--bad); }
 
+.solver { margin-top: 8px; padding: 10px 12px; border-radius: var(--radius); background: var(--panel); font-size: .92rem; }
+.solver .row { justify-content: space-between; margin: 0; }
+.solver.good #solve-status { color: var(--good); }
+.solver.bad #solve-status { color: var(--bad); }
+#solve-status { color: var(--muted); }
+.solve-steps { margin: 8px 0 0; padding-left: 1.6em; color: var(--muted); }
+.solve-steps:empty { display: none; }
+.solve-steps li { margin: 2px 0; }
+
 .card-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .card-item { background: var(--panel); border-radius: var(--radius); padding: 10px; }
 .card-item .row { margin: 6px 0; }

@@ -64,6 +64,9 @@ class Board:
         i, j = self._index(a), self._index(b)
         self.tiles[i], self.tiles[j] = self.tiles[j], self.tiles[i]
         
+    def copy(self) -> Board:
+        return Board(self.size, [tile.copy() for tile in self.tiles], [substrate.copy() for substrate in self.substrates])
+
     def tick(self) -> None:
         for substrate in self.substrates:
             substrate.tick()

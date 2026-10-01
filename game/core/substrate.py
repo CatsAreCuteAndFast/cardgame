@@ -9,6 +9,11 @@ class Substrate:
     def __post_init__(self) -> None:
         self.counter = self.type.period
         
+    def copy(self) -> Substrate:
+        clone = Substrate(self.type)
+        clone.counter = self.counter
+        return clone
+
     @property
     def is_ready(self) -> bool:
         return self.counter == 0

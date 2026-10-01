@@ -50,6 +50,10 @@
     <div class="board" id="edit-board"></div>
 
     <div id="validation" class="validation"></div>
+    <div id="solver" class="solver" hidden>
+      <div class="row"><span id="solve-status"></span><button id="solve-play" class="small" hidden>Step through</button></div>
+      <ol id="solve-steps" class="solve-steps"></ol>
+    </div>
 
     <h2 id="cards-title">Cards</h2>
     <ol id="card-list" class="card-list"></ol>
@@ -113,7 +117,7 @@
   </form>
 </dialog>
 
-<script src="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js"></script>
+<script src="rules.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>

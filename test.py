@@ -43,6 +43,50 @@ def test_level_dict_roundtrip() -> None:
     assert [coord for coord, tile in board.iterate_tiles() if tile.is_flipped] == [Coord(0, 0), Coord(1, 2)]
 
 
+def _solve(data: dict, budget: int = 6):
+    from game.rules.level_io import level_from_dict
+    from game.rules.solver import solve
+
+    base = {"budget": budget, "links": [], "flipped": []}
+    return solve(level_from_dict(base | data))
+
+
+def test_solver() -> None:
+    from game.rules.level import make_demo_level
+    from game.rules.level_io import level_from_dict
+    from game.rules.game_state import GameState
+    from game.rules.game_controller import GameController
+    from game.rules.solver import solve, Solved, Unsolvable
+
+    result = solve(make_demo_level())
+    assert result == Unsolvable("tile (0,2) can never be flipped", 0), result
+
+    pair = {"tiles": [["basic", "basic"], ["basic", "basic"]], "substrates": [["plain", "plain"], ["plain", "plain"]],
+            "cards": [{"effect": "flip", "target": {"kind": "any", "count": 2}}, {"effect": "flip", "target": {"kind": "fixed", "coords": [[0, 0]]}}]}
+    result = _solve(pair)
+    assert isinstance(result, Solved) and len(result.steps) == 2 and result.solutions == 6 and result.counted_all, result
+    controller = GameController(GameState(level_from_dict({"budget": 6, "links": [], "flipped": []} | pair)))
+    for step in result.steps:
+        for intent in step.intents:
+            controller.handle(intent)
+    assert controller.game_state.is_won
+    result = _solve(pair, budget=1)
+    assert isinstance(result, Unsolvable) and result.reason == "no solution within the play budget (1)", result
+
+    waiting = {"tiles": [["basic"]], "substrates": [["oneturn"]], "cards": [{"effect": "flip", "target": {"kind": "fixed", "coords": [[0, 0]]}}]}
+    result = _solve(waiting)
+    assert isinstance(result, Solved) and len(result.steps) == 2 and result.solutions == 1, result
+
+    swap = {"tiles": [["basic", "basic"]], "substrates": [["plain", "plain"]], "flipped": [[0, 0]],
+            "cards": [{"effect": "flip", "target": {"kind": "fixed", "coords": [[0, 0]]}}, {"effect": "swap", "target": {"kind": "adjacent", "count": 2}}]}
+    result = _solve(swap)
+    assert isinstance(result, Solved) and [step.move.card.effect_id for step in result.steps] == ["swap", "flip"], result
+
+    stuck = {"tiles": [["basic", "basic"]], "substrates": [["plain", "plain"]], "cards": [{"effect": "flip", "target": {"kind": "fixed", "coords": [[0, 0]]}}]}
+    result = _solve(stuck)
+    assert isinstance(result, Unsolvable) and result.reason.startswith("every reachable position"), result
+
+
 def test_editor_manifest_matches_packages() -> None:
     import json
 
@@ -58,5 +102,7 @@ if __name__ == "__main__":
     print("ok: no pygame in", ", ".join(PACKAGES))
     test_level_dict_roundtrip()
     print("ok: level dict roundtrip")
+    test_solver()
+    print("ok: solver")
     test_editor_manifest_matches_packages()
     print("ok: editor manifest")
