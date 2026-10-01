@@ -26,11 +26,12 @@ async function loadPyodideScript() {
   });
 }
 
-async function loadBridge() {
+// base is the path from the calling page to editor/
+async function loadBridge(base = "") {
   await loadPyodideScript();
   const pyodide = await loadPyodide({ indexURL: PYODIDE_URL });
-  const modules = JSON.parse(await fetchText("modules.json"));
-  const sources = await Promise.all([...modules.map((path) => fetchText("../" + path)), fetchText("bridge.py")]);
+  const modules = JSON.parse(await fetchText(base + "modules.json"));
+  const sources = await Promise.all([...modules.map((path) => fetchText(base + "../" + path)), fetchText(base + "bridge.py")]);
   const home = "/home/pyodide/";
   modules.forEach((path, index) => {
     pyodide.FS.mkdirTree(home + path.slice(0, path.lastIndexOf("/")));
