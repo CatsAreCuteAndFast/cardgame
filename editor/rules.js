@@ -1,6 +1,6 @@
 "use strict";
 
-// shared by the page (editor.js) and the solver worker, which each run their own Pyodide
+// shared by the editor and the tester page (play/)
 
 const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/";
 
@@ -12,11 +12,6 @@ async function fetchText(path) {
 
 async function loadPyodideScript() {
   if (typeof loadPyodide === "function") return;
-  // Pyodide only runs in module workers, which can't load pyodide.js
-  if (typeof document === "undefined") {
-    globalThis.loadPyodide = (await import(PYODIDE_URL + "pyodide.mjs")).loadPyodide;
-    return;
-  }
   await new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = PYODIDE_URL + "pyodide.js";
@@ -41,6 +36,3 @@ async function loadBridge(base = "") {
   pyodide.runPython(`import sys\nif "${home}" not in sys.path: sys.path.insert(0, "${home}")`);
   return pyodide.pyimport("bridge");
 }
-
-// the solver worker imports this file as a module, where top-level functions aren't global
-globalThis.loadBridge = loadBridge;

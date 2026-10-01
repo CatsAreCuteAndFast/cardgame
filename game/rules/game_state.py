@@ -1,4 +1,3 @@
-from copy import copy
 from game.rules.level import Level
 from game.rules.card import Card
 
@@ -9,12 +8,6 @@ class GameState:
         self.board = level.make_board()
         self.hand = list(level.card_list)
         
-    def copy(self) -> GameState:
-        clone = copy(self)
-        clone.board = self.board.copy()
-        clone.hand = list(self.hand)
-        return clone
-
     @property
     def is_won(self) -> bool:
         return all(tile.is_flipped for tile in self.board.tiles)
