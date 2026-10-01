@@ -30,7 +30,7 @@
   <section id="edit" class="screen">
     <p id="edit-empty" class="empty" hidden>Pick or create a level on the Levels tab.</p>
     <div id="edit-body">
-    <div class="row wrap">
+    <div class="row wrap" id="edit-fields">
       <div class="field">Width <span class="stepper" data-field="width"></span></div>
       <div class="field">Height <span class="stepper" data-field="height"></span></div>
       <div class="field">Budget <span class="stepper" data-field="budget"></span></div>
@@ -48,9 +48,9 @@
 
     <div id="validation" class="validation"></div>
 
-    <h2>Cards</h2>
+    <h2 id="cards-title">Cards</h2>
     <ol id="card-list" class="card-list"></ol>
-    <div class="row wrap">
+    <div class="row wrap" id="edit-actions">
       <button id="add-card">Add card</button>
       <button id="copy-json" class="primary">Copy JSON</button>
     </div>

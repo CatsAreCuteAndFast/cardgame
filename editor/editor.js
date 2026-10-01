@@ -340,7 +340,7 @@ function renderEdit() {
   }
 
   const board = $("edit-board");
-  board.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+  setBoardShape(board, width, height);
   const picked = pickCard !== null ? data.cards[pickCard].target.coords : [];
   board.replaceChildren();
   for (let row = 0; row < height; row++) {
@@ -413,6 +413,12 @@ function renderPalette(data) {
       }),
     );
   }
+}
+
+function setBoardShape(board, width, height) {
+  board.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+  board.style.setProperty("--cols", width);
+  board.style.setProperty("--rows", height);
 }
 
 function renderCell(cell, { classes = [], order = null, onclick }) {
@@ -602,7 +608,7 @@ function renderPlay() {
   }
 
   const has = (list, row, col) => list.some((coord) => sameCoord(coord, [row, col]));
-  board.style.gridTemplateColumns = `repeat(${snap.width}, 1fr)`;
+  setBoardShape(board, snap.width, snap.height);
   snap.cells.forEach((cell, index) => {
     const row = Math.floor(index / snap.width);
     const col = index % snap.width;
