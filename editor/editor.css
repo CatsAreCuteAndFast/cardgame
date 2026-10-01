@@ -88,7 +88,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .segmented { display: flex; gap: 0; margin: 12px 0 8px; }
-.segmented button { flex: 1; border-radius: 0; }
+.segmented button { flex: 1 1 auto; border-radius: 0; padding: 0 6px; }
 .segmented button:first-child { border-radius: var(--radius) 0 0 var(--radius); }
 .segmented button:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
 .segmented button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -96,6 +96,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .palette { display: flex; flex-wrap: wrap; gap: 6px; min-height: 44px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; }
 .chip.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint { align-self: center; color: var(--muted); font-size: .9rem; }
 .swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #0006; }
 
 .banner {

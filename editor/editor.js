@@ -61,6 +61,7 @@ function loadLevels() {
   }
   for (const level of levels) {
     if (!folders.some((folder) => folder.id === level.folder)) level.folder = null;
+    if (!Array.isArray(level.data.flipped)) level.data.flipped = [];
   }
   if (!levels.some((level) => level.id === currentId)) currentId = levels[0]?.id ?? null;
 }
@@ -89,6 +90,7 @@ function blankLevel(width = 3, height = 3) {
     tiles: grid(width, height, () => catalog.tiles[0].id),
     substrates: grid(width, height, () => catalog.substrates[0].id),
     links: [],
+    flipped: [],
     cards: [{ effect: "flip", target: { kind: "any", count: 1 } }],
   };
 }
@@ -124,9 +126,10 @@ function formatLevel(data) {
     items.length
       ? ` "${key}": [\n${items.map((item) => "  " + JSON.stringify(item).replaceAll(",", ", ").replaceAll(":", ": ")).join(",\n")}\n ]`
       : ` "${key}": []`;
+  const inline = (key, items) => ` "${key}": [${items.map((item) => JSON.stringify(item).replaceAll(",", ", ")).join(", ")}]`;
   return (
     `{\n "budget": ${data.budget},\n` +
-    ["tiles", "substrates", "links", "cards"].map((key) => block(key, data[key])).join(",\n") +
+    [block("tiles", data.tiles), block("substrates", data.substrates), block("links", data.links), inline("flipped", data.flipped), block("cards", data.cards)].join(",\n") +
     "\n}\n"
   );
 }
@@ -140,6 +143,7 @@ function normalizeLevel(raw) {
     tiles: raw.tiles,
     substrates: raw.substrates,
     links: Array.isArray(raw.links) ? raw.links : [],
+    flipped: Array.isArray(raw.flipped) ? raw.flipped : [],
     cards: Array.isArray(raw.cards) ? raw.cards : [],
   };
 }
@@ -158,6 +162,7 @@ function resize(data, width, height) {
   data.substrates = grid(width, height, (r, c) => data.substrates[r]?.[c] ?? catalog.substrates[0].id);
   const inside = ([r, c]) => r < height && c < width;
   data.links = data.links.map((group) => group.filter(inside)).filter((group) => group.length > 0);
+  data.flipped = data.flipped.filter(inside);
   for (const card of data.cards) {
     if (card.target.coords) card.target.coords = card.target.coords.filter(inside);
   }
@@ -206,6 +211,10 @@ function editTap(row, col) {
     data.substrates[row][col] = brush.substrates;
   } else if (mode === "links") {
     toggleLink(data, row, col, brush.links);
+  } else if (mode === "flipped") {
+    const index = data.flipped.findIndex((coord) => sameCoord(coord, [row, col]));
+    if (index === -1) data.flipped.push([row, col]);
+    else data.flipped.splice(index, 1);
   }
   changed();
 }
@@ -485,7 +494,7 @@ function renderEdit() {
         renderCell(
           {
             type: data.tiles[row][col],
-            flipped: false,
+            flipped: data.flipped.some((coord) => sameCoord(coord, [row, col])),
             link: linkOf(data, row, col),
             period: substrate?.period ?? 0,
             counter: substrate?.period ?? 0,
@@ -530,6 +539,8 @@ function renderPalette(data) {
         ),
       );
     }
+  } else if (mode === "flipped") {
+    palette.append(el("span", { class: "hint", textContent: `Tap tiles to set which start flipped (${data.flipped.length} flipped)` }));
   } else if (mode === "links") {
     data.links.forEach((group, index) => {
       palette.append(

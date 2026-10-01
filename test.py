@@ -30,10 +30,17 @@ def test_no_pygame_in_logic_layers() -> None:
 def test_level_dict_roundtrip() -> None:
     from game.rules.level import make_demo_level
     from game.rules.level_io import level_from_dict, level_to_dict, load_level
+    from game.core.coord import Coord
 
     level = make_demo_level()
     assert level_from_dict(level_to_dict(level)) == level
     assert load_level(ROOT / "levels/demo.json") == level, "levels/demo.json differs from make_demo_level()"
+
+    data = level_to_dict(level) | {"flipped": [[0, 0], [1, 2]]}
+    flipped_level = level_from_dict(data)
+    assert level_to_dict(flipped_level) == data
+    board = flipped_level.make_board()
+    assert [coord for coord, tile in board.iterate_tiles() if tile.is_flipped] == [Coord(0, 0), Coord(1, 2)]
 
 
 def test_editor_manifest_matches_packages() -> None:

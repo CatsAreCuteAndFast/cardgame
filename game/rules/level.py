@@ -31,6 +31,7 @@ class Level:
     tile_list: tuple[tuple[str, ...], ...]
     substrate_list: tuple[tuple[str, ...], ...]
     link_groups: tuple[tuple[Coord, ...], ...] = ()
+    flipped: tuple[Coord, ...] = ()
     
     @property 
     def size(self) -> tuple[int, int]:
@@ -41,6 +42,7 @@ class Level:
         self._check_substrates()
         self._check_cards()
         self._check_links()
+        self._check_flipped()
         
     def _check_tiles(self) -> None:
         if not self.tile_list:
@@ -119,6 +121,16 @@ class Level:
                     raise ValueError(f"{coord} appears in more than one linked group")
                 seen.add(coord)
                 
+    def _check_flipped(self) -> None:
+        width, height = self.size
+        for coord in self.flipped:
+            if not (0 <= coord.row < height and 0 <= coord.col < width):
+                raise ValueError(f"flipped tile {coord} is out of bounds {width}x{height}")
+        if len(set(self.flipped)) != len(self.flipped):
+            raise ValueError("a tile is listed as flipped more than once")
+        if len(self.flipped) == width * height:
+            raise ValueError("every tile starts flipped, so the level is already solved")
+
     def make_board(self) -> Board:
         width, height = self.size
         
@@ -128,8 +140,9 @@ class Level:
             for coord in group
         }
         
+        flipped = set(self.flipped)
         board_tile_list = [
-            Tile(get_tile_type(tile_id), link=link_of.get(Coord(row_index, col_index)))
+            Tile(get_tile_type(tile_id), Coord(row_index, col_index) in flipped, link_of.get(Coord(row_index, col_index)))
             for row_index, row in enumerate(self.tile_list)
             for col_index, tile_id in enumerate(row)
         ]
