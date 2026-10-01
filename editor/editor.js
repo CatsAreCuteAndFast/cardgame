@@ -2,6 +2,7 @@
 
 const STORAGE_KEY = "cardgame.levels";
 const CURRENT_KEY = "cardgame.current";
+const FOLDERS_KEY = "cardgame.folders";
 const MIN_SIZE = 1;
 const MAX_SIZE = 8;
 const MAX_BUDGET = 9999;
@@ -18,6 +19,7 @@ let catalog = {
 
 let bridge = null;
 let levels = [];
+let folders = [];
 let currentId = null;
 let tab = "levels";
 let mode = "tiles";
@@ -49,10 +51,16 @@ function loadLevels() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     levels = Array.isArray(parsed) ? parsed : [];
+    const parsedFolders = JSON.parse(localStorage.getItem(FOLDERS_KEY) || "[]");
+    folders = Array.isArray(parsedFolders) ? parsedFolders : [];
     currentId = localStorage.getItem(CURRENT_KEY);
   } catch {
     levels = [];
+    folders = [];
     currentId = null;
+  }
+  for (const level of levels) {
+    if (!folders.some((folder) => folder.id === level.folder)) level.folder = null;
   }
   if (!levels.some((level) => level.id === currentId)) currentId = levels[0]?.id ?? null;
 }
@@ -60,6 +68,7 @@ function loadLevels() {
 function saveLevels() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(levels));
+    localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
     if (currentId) localStorage.setItem(CURRENT_KEY, currentId);
   } catch {
     toast("Couldn't save: browser storage is blocked");
@@ -88,8 +97,8 @@ function grid(width, height, fill) {
   return Array.from({ length: height }, (_, row) => Array.from({ length: width }, (_, col) => fill(row, col)));
 }
 
-function addLevel(name, data) {
-  const level = { id: newId(), name, updated: Date.now(), data };
+function addLevel(name, data, folder = null) {
+  const level = { id: newId(), name, folder, updated: Date.now(), data };
   levels.push(level);
   currentId = level.id;
   saveLevels();
@@ -231,21 +240,62 @@ function render() {
     screen.classList.toggle("active", screen.id === tab);
   }
   const level = current();
-  $("current-name").textContent = level ? level.name : "No level selected";
+  const folder = level ? folderById(level.folder) : null;
+  $("current-name").textContent = level ? (folder ? `${folder.name} / ${level.name}` : level.name) : "No level selected";
   if (tab === "levels") renderLevels();
   if (tab === "edit") renderEdit();
   if (tab === "play") renderPlay();
 }
 
+const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+
 function renderLevels() {
-  const list = $("level-list");
-  list.replaceChildren();
-  if (!levels.length) {
-    list.append(el("li", { class: "empty", textContent: "No levels yet. Tap “New level” to start." }));
+  const container = $("level-list");
+  container.replaceChildren();
+  if (!levels.length && !folders.length) {
+    container.append(el("p", { class: "empty", textContent: "No levels yet. Tap “New level” to start." }));
     return;
   }
-  const sorted = [...levels].sort((a, b) => b.updated - a.updated);
-  for (const level of sorted) {
+  for (const folder of [...folders].sort(byName)) {
+    const inside = levels.filter((level) => level.folder === folder.id);
+    container.append(
+      el("section", { class: "folder" }, [
+        el("div", { class: "folder-head" }, [
+          el("button", {
+            class: "folder-toggle",
+            textContent: `${folder.collapsed ? "▸" : "▾"} ${folder.name} (${inside.length})`,
+            onclick: () => {
+              folder.collapsed = !folder.collapsed;
+              saveLevels();
+              render();
+            },
+          }),
+          el("div", { class: "actions" }, [
+            el("button", { class: "small", textContent: "+ Level", onclick: () => newLevel(folder.id) }),
+            el("button", { class: "small", textContent: "Rename", onclick: () => renameFolder(folder) }),
+            el("button", { class: "small", textContent: "Copy", title: "Copy this folder's levels", onclick: () => copyLevels(inside, folder.name) }),
+            el("button", { class: "small danger", textContent: "✕", title: "Delete folder", onclick: () => deleteFolder(folder) }),
+          ]),
+        ]),
+        folder.collapsed ? null : renderLevelList(inside, "Empty folder. Use “+ Level” or move levels here."),
+      ]),
+    );
+  }
+  const ungrouped = levels.filter((level) => level.folder === null);
+  if (ungrouped.length || !folders.length) {
+    container.append(
+      el("section", { class: "folder" }, [
+        folders.length ? el("div", { class: "folder-head" }, el("h2", { textContent: `Ungrouped (${ungrouped.length})` })) : null,
+        renderLevelList(ungrouped, ""),
+      ]),
+    );
+  }
+}
+
+function renderLevelList(items, emptyText) {
+  const list = el("ul", { class: "level-list" });
+  if (!items.length && emptyText) list.append(el("li", { class: "empty", textContent: emptyText }));
+  for (const level of [...items].sort(byName)) {
     const { width, height } = size(level.data);
     const open = () => {
       currentId = level.id;
@@ -253,7 +303,7 @@ function renderLevels() {
       setTab("edit");
     };
     list.append(
-      el("li", { class: "level-item" + (level.id === currentId ? " current" : "") }, [
+      el("li", { class: "level-item" + (level.id === currentId ? " is-current" : "") }, [
         el("div", { class: "info", onclick: open }, [
           el("div", { class: "name", textContent: level.name }),
           el("div", {
@@ -261,12 +311,96 @@ function renderLevels() {
             textContent: `${width}×${height} · ${level.data.cards.length} cards · ${new Date(level.updated).toLocaleString()}`,
           }),
         ]),
-        el("button", { class: "small", textContent: "Rename", onclick: () => renameLevel(level) }),
-        el("button", { class: "small", textContent: "Clone", title: "Duplicate", onclick: () => duplicateLevel(level) }),
-        el("button", { class: "small danger", textContent: "✕", title: "Delete", onclick: () => deleteLevel(level) }),
+        el("div", { class: "actions" }, [
+          el("button", { class: "small", textContent: "Rename", onclick: () => renameLevel(level) }),
+          el("button", { class: "small", textContent: "Clone", title: "Duplicate", onclick: () => duplicateLevel(level) }),
+          el("button", { class: "small", textContent: "Move", title: "Move to folder", onclick: () => moveLevel(level) }),
+          el("button", { class: "small danger", textContent: "✕", title: "Delete", onclick: () => deleteLevel(level) }),
+        ]),
       ]),
     );
   }
+  return list;
+}
+
+function folderById(id) {
+  return folders.find((folder) => folder.id === id) ?? null;
+}
+
+function folderByName(name) {
+  const existing = folders.find((folder) => folder.name === name);
+  if (existing) return existing;
+  const folder = { id: newId(), name, collapsed: false };
+  folders.push(folder);
+  return folder;
+}
+
+function askFolderName(initial) {
+  const name = prompt("Folder name", initial);
+  if (name === null || !name.trim()) return null;
+  return name.trim();
+}
+
+function newLevel(folderId = null) {
+  const count = levels.filter((level) => level.folder === folderId).length;
+  const name = prompt("Level name", `Level ${count + 1}`);
+  if (name === null) return;
+  addLevel(name.trim() || `Level ${count + 1}`, blankLevel(), folderId);
+  setTab("edit");
+}
+
+function renameFolder(folder) {
+  const name = askFolderName(folder.name);
+  if (name === null) return;
+  if (folders.some((other) => other !== folder && other.name === name)) return alert(`A folder named “${name}” already exists.`);
+  folder.name = name;
+  saveLevels();
+  render();
+}
+
+function deleteFolder(folder) {
+  const inside = levels.filter((level) => level.folder === folder.id);
+  const note = inside.length ? `\nIts ${inside.length} level${inside.length === 1 ? "" : "s"} will move to Ungrouped.` : "";
+  if (!confirm(`Delete folder “${folder.name}”?${note}`)) return;
+  for (const level of inside) level.folder = null;
+  folders = folders.filter((other) => other !== folder);
+  saveLevels();
+  render();
+}
+
+function moveLevel(level) {
+  const dialog = $("move-dialog");
+  const moveTo = (folderId) => {
+    level.folder = folderId;
+    saveLevels();
+    dialog.close();
+    render();
+  };
+  $("move-dialog-title").textContent = `Move “${level.name}” to`;
+  const option = (label, folderId) =>
+    el("button", { type: "button", textContent: label, disabled: level.folder === folderId, onclick: () => moveTo(folderId) });
+  $("move-options").replaceChildren(
+    ...[...folders].sort(byName).map((folder) => option(folder.name, folder.id)),
+    option("Ungrouped", null),
+    el("button", {
+      type: "button",
+      textContent: "+ New folder…",
+      onclick: () => {
+        const name = askFolderName("");
+        if (name !== null) moveTo(folderByName(name).id);
+      },
+    }),
+  );
+  dialog.showModal();
+}
+
+function copyLevels(items, title) {
+  if (!items.length) return toast("No levels to copy");
+  const entries = items.map((level) => {
+    const folder = folderById(level.folder);
+    return folder ? { name: level.name, folder: folder.name, level: level.data } : { name: level.name, level: level.data };
+  });
+  copyText(JSON.stringify(entries), title);
 }
 
 function renameLevel(level) {
@@ -279,7 +413,7 @@ function renameLevel(level) {
 }
 
 function duplicateLevel(level) {
-  addLevel(level.name + " copy", structuredClone(level.data));
+  addLevel(level.name + " copy", structuredClone(level.data), level.folder);
   render();
 }
 
@@ -675,7 +809,10 @@ function importText(text) {
   }
   try {
     if (Array.isArray(parsed)) {
-      for (const entry of parsed) addLevel(String(entry.name ?? "Imported"), normalizeLevel(entry.level));
+      for (const entry of parsed) {
+        const folder = entry.folder ? folderByName(String(entry.folder)) : null;
+        addLevel(String(entry.name ?? "Imported"), normalizeLevel(entry.level), folder?.id ?? null);
+      }
       toast(`Imported ${parsed.length} level${parsed.length === 1 ? "" : "s"}`);
     } else {
       const data = normalizeLevel(parsed);
@@ -753,19 +890,19 @@ function init() {
       render();
     });
   }
-  $("new-level").addEventListener("click", () => {
-    const name = prompt("Level name", `Level ${levels.length + 1}`);
+  $("new-level").addEventListener("click", () => newLevel(null));
+  $("new-folder").addEventListener("click", () => {
+    const name = askFolderName(`Folder ${folders.length + 1}`);
     if (name === null) return;
-    addLevel(name.trim() || `Level ${levels.length + 1}`, blankLevel());
-    setTab("edit");
+    if (folders.some((folder) => folder.name === name)) return alert(`A folder named “${name}” already exists.`);
+    folderByName(name);
+    saveLevels();
+    render();
   });
   $("import-level").addEventListener("click", () =>
     showTextDialog("Import JSON", "", "Paste one level, or the text from “Copy all”.", importText),
   );
-  $("copy-all").addEventListener("click", () => {
-    if (!levels.length) return toast("No levels to copy");
-    copyText(JSON.stringify(levels.map((level) => ({ name: level.name, level: level.data }))), "All levels");
-  });
+  $("copy-all").addEventListener("click", () => copyLevels(levels, "All levels"));
   $("add-card").addEventListener("click", () => {
     current().data.cards.push({ effect: catalog.effects[0].id, target: defaultTarget(catalog.effects[0].kinds[0]) });
     changed();

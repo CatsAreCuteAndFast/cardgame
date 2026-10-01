@@ -21,10 +21,11 @@
   <section id="levels" class="screen">
     <div class="row wrap">
       <button id="new-level" class="primary">New level</button>
+      <button id="new-folder">New folder</button>
       <button id="import-level">Import JSON</button>
       <button id="copy-all">Copy all</button>
     </div>
-    <ul id="level-list" class="level-list"></ul>
+    <div id="level-list"></div>
   </section>
 
   <section id="edit" class="screen">
@@ -78,6 +79,16 @@
     <div class="row end">
       <button value="cancel">Close</button>
       <button id="text-dialog-ok" value="ok" class="primary">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="move-dialog">
+  <form method="dialog">
+    <h2 id="move-dialog-title"></h2>
+    <div id="move-options" class="move-options"></div>
+    <div class="row end">
+      <button value="cancel">Cancel</button>
     </div>
   </form>
 </dialog>
