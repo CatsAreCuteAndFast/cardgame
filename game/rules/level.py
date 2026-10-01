@@ -63,7 +63,7 @@ class Level:
             except KeyError:
                 raise ValueError(f"Unknown effect '{card.effect_id}' at index {index}") from None
             if not accepts(effect, card.targets):
-                raise ValueError(f"effect {effect} doesnt accept targeting of type {card.targets}")
+                raise ValueError(f"card {index}: effect {card.effect_id} doesnt accept targeting of type {card.targets}")
             self._check_targets(card, index)
             
     def _check_substrates(self) -> None:

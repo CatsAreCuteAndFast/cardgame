@@ -13,3 +13,6 @@ _REGISTRY = {substrate.id: substrate for substrate in (ONETURN, TWOTURN, PLAIN)}
 
 def get_substrate_type(id: str) -> SubstrateType:
     return _REGISTRY[id]
+
+def substrate_type_ids() -> tuple[str, ...]:
+    return tuple(_REGISTRY)

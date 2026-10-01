@@ -14,3 +14,6 @@ _REGISTRY = {t.id: t for t in (BASIC, NOTFLIPPABLE, NOTSWAPPABLE)}
 
 def get_tile_type(id: str) -> TileType:
     return _REGISTRY[id]
+
+def tile_type_ids() -> tuple[str, ...]:
+    return tuple(_REGISTRY)

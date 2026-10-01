@@ -56,6 +56,9 @@ _REGISTRY: dict[str, Effect] = {"flip": Flip(), "retarget": Retarget(), "swap": 
 def get_effect(id: str) -> Effect:
     return _REGISTRY[id]
 
+def effect_ids() -> tuple[str, ...]:
+    return tuple(_REGISTRY)
+
 def can_modify(effect: Effect, spec: TargetSpec) -> bool:
     match effect:
         case Retarget():

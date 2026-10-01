@@ -27,6 +27,16 @@ def test_no_pygame_in_logic_layers() -> None:
             )
 
 
+def test_level_dict_roundtrip() -> None:
+    from game.rules.level import make_demo_level
+    from game.rules.level_io import level_from_dict, level_to_dict
+
+    level = make_demo_level()
+    assert level_from_dict(level_to_dict(level)) == level
+
+
 if __name__ == "__main__":
     test_no_pygame_in_logic_layers()
     print("ok: no pygame in", ", ".join(PACKAGES))
+    test_level_dict_roundtrip()
+    print("ok: level dict roundtrip")
