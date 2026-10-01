@@ -1,7 +1,9 @@
+import sys
 import pygame
 from game.view.screen_layout import ScreenLayout
 from game.view.game_renderer import GameRenderer
 from game.rules.level import make_demo_level
+from game.rules.level_io import load_level
 from game.rules.game_state import GameState
 from game.rules.game_controller import GameController
 from game.input.translate import translate
@@ -16,7 +18,7 @@ def main() -> None:
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode(WINDOW_SIZE, pygame.RESIZABLE)
 
-    level = make_demo_level()
+    level = load_level(sys.argv[1]) if len(sys.argv) > 1 else make_demo_level()
     state = GameState(level)
     controller = GameController(state)
     renderer = GameRenderer()

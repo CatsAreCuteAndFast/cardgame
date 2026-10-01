@@ -29,10 +29,11 @@ def test_no_pygame_in_logic_layers() -> None:
 
 def test_level_dict_roundtrip() -> None:
     from game.rules.level import make_demo_level
-    from game.rules.level_io import level_from_dict, level_to_dict
+    from game.rules.level_io import level_from_dict, level_to_dict, load_level
 
     level = make_demo_level()
     assert level_from_dict(level_to_dict(level)) == level
+    assert load_level(ROOT / "levels/demo.json") == level, "levels/demo.json differs from make_demo_level()"
 
 
 if __name__ == "__main__":
