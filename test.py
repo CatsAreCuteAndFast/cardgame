@@ -36,8 +36,20 @@ def test_level_dict_roundtrip() -> None:
     assert load_level(ROOT / "levels/demo.json") == level, "levels/demo.json differs from make_demo_level()"
 
 
+def test_editor_manifest_matches_packages() -> None:
+    import json
+
+    listed = json.loads((ROOT / "editor/modules.json").read_text())
+    actual = ["game/__init__.py"] + sorted(
+        str(path.relative_to(ROOT)) for package in PACKAGES for path in (ROOT / package).glob("*.py")
+    )
+    assert listed == actual, f"editor/modules.json is out of date, expected {actual}"
+
+
 if __name__ == "__main__":
     test_no_pygame_in_logic_layers()
     print("ok: no pygame in", ", ".join(PACKAGES))
     test_level_dict_roundtrip()
     print("ok: level dict roundtrip")
+    test_editor_manifest_matches_packages()
+    print("ok: editor manifest")

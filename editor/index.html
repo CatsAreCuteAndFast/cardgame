@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16181d">
+<title>Level Editor</title>
+<link rel="stylesheet" href="editor.css">
+</head>
+<body>
+<header class="top">
+  <nav class="tabs" role="tablist">
+    <button class="tab" data-tab="levels">Levels</button>
+    <button class="tab" data-tab="edit">Edit</button>
+    <button class="tab" data-tab="play">Play</button>
+  </nav>
+  <div class="current" id="current-name"></div>
+</header>
+
+<main>
+  <section id="levels" class="screen">
+    <div class="row wrap">
+      <button id="new-level" class="primary">New level</button>
+      <button id="import-level">Import JSON</button>
+      <button id="copy-all">Copy all</button>
+    </div>
+    <ul id="level-list" class="level-list"></ul>
+  </section>
+
+  <section id="edit" class="screen">
+    <p id="edit-empty" class="empty" hidden>Pick or create a level on the Levels tab.</p>
+    <div id="edit-body">
+    <div class="row wrap">
+      <div class="field">Width <span class="stepper" data-field="width"></span></div>
+      <div class="field">Height <span class="stepper" data-field="height"></span></div>
+      <div class="field">Budget <span class="stepper" data-field="budget"></span></div>
+    </div>
+
+    <div class="segmented" id="paint-modes">
+      <button data-mode="tiles">Tiles</button>
+      <button data-mode="substrates">Substrates</button>
+      <button data-mode="links">Links</button>
+    </div>
+    <div class="palette" id="palette"></div>
+    <div class="banner" id="pick-banner" hidden></div>
+
+    <div class="board" id="edit-board"></div>
+
+    <div id="validation" class="validation"></div>
+
+    <h2>Cards</h2>
+    <ol id="card-list" class="card-list"></ol>
+    <div class="row wrap">
+      <button id="add-card">Add card</button>
+      <button id="copy-json" class="primary">Copy JSON</button>
+    </div>
+    </div>
+  </section>
+
+  <section id="play" class="screen">
+    <div class="row status">
+      <span id="play-status"></span>
+      <button id="play-reset">Reset</button>
+    </div>
+    <div id="play-error" class="validation bad" hidden></div>
+    <div class="board" id="play-board"></div>
+    <div class="hand" id="play-hand"></div>
+  </section>
+</main>
+
+<div class="loading" id="loading">Loading game rules…</div>
+
+<dialog id="text-dialog">
+  <form method="dialog">
+    <h2 id="text-dialog-title"></h2>
+    <textarea id="text-dialog-text" rows="12" spellcheck="false"></textarea>
+    <p id="text-dialog-note" class="note"></p>
+    <div class="row end">
+      <button value="cancel">Close</button>
+      <button id="text-dialog-ok" value="ok" class="primary">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>

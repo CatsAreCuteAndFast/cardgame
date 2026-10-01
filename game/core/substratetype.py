@@ -9,7 +9,7 @@ PLAIN = SubstrateType("plain", 0)
 ONETURN = SubstrateType("oneturn", 1)
 TWOTURN = SubstrateType("twoturn", 2)
 
-_REGISTRY = {substrate.id: substrate for substrate in (ONETURN, TWOTURN, PLAIN)}
+_REGISTRY = {substrate.id: substrate for substrate in (PLAIN, ONETURN, TWOTURN)}
 
 def get_substrate_type(id: str) -> SubstrateType:
     return _REGISTRY[id]

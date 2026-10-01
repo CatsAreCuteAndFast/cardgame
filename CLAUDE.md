@@ -10,6 +10,10 @@ This file is the project's memory. Keep it up to date:
 - At the start of a session, compare `git log` with the last commit recorded in the Changelog. Record any commits made since then (for example, changes Drifl made without Claude).
 - When a known issue is fixed or confirmed as intended, move it out of **Known issues** and note that in the Changelog.
 
+## Response style (standing instruction)
+
+Every reply to Drifl must list all changes made in that turn: files, commits, and git index/state changes. Keep the message as short as possible otherwise.
+
 ## Git workflow (standing instruction)
 
 Claude handles git for this project: staging, writing commit messages, and keeping history tidy.
@@ -21,12 +25,13 @@ Claude handles git for this project: staging, writing commit messages, and keepi
 
 ## Commands
 
-- Run the game: `python main.py`
-- Run the test: `python test.py`. It is an architecture check that fails if `game/core` or `game/rules` imports pygame.
+- Run the game: `python main.py` (demo level) or `python main.py levels/<name>.json`
+- Run the tests: `python test.py`. It checks that `game/core` and `game/rules` don't import pygame, that levels survive a dict roundtrip and `levels/demo.json` matches `make_demo_level()`, and that `editor/modules.json` lists every file in those packages.
+- Try the editor locally: `python -m http.server` at the repo root, then open `localhost:8000/editor/`.
 
 ## Game mechanics
 
-**Core loop:** the player has a hand of cards and a play budget. Playing a card applies its effect to the board, uses one play and ticks every substrate. When `plays_remaining` reaches 0 the phase becomes `GameOver`. There is no win condition yet; the debug panel shows plays remaining and whether the game is over.
+**Core loop:** the player has a hand of cards and a play budget. Playing a card applies its effect to the board, uses one play and ticks every substrate. The level is won when every tile is flipped (`GameState.is_won`), and the phase becomes `Won`. Otherwise, when `plays_remaining` reaches 0, the phase becomes `GameOver`. The debug panel shows plays remaining, game over and won.
 
 **Board** (`game/core`): a W×H grid stored as two flat lists, `tiles` and `substrates`. The index is `width * row + col`, and positions are `Coord(row, col)`.
 - `Tile`: `type`, `is_flipped`, `link` (a string group id or None).
@@ -51,11 +56,13 @@ Claude handles git for this project: staging, writing commit messages, and keepi
 **Controller phases** (`game_controller.py`, `phases.py`):
 1. `Idle`: clicking a card moves to `Selected(index)`.
 2. `Selected(index)`: clicking the same card again moves to `Targeting(index, coords, target_index)`.
-3. `Targeting(index, coords, target_index)`: the card runs once it has enough picks. Afterwards the phase returns to `Idle`, or to `GameOver` if the budget is used up.
+3. `Targeting(index, coords, target_index)`: the card runs once it has enough picks. Afterwards the phase becomes `Won` if all tiles are flipped, `GameOver` if the budget is used up, and `Idle` otherwise. `Won` and `GameOver` ignore all input.
 
 Clicking anywhere else cancels back to `Idle`. Invalid tile picks are ignored.
 
-**Demo level** (`make_demo_level` in `level.py`): a 3×3 board, a budget of 1000 plays, and 5 cards: a fixed flip, a choose-from flip, an any-2 flip, a retarget and a swap. It uses mixed tile and substrate types and has one link group, {(0,1), (2,0)}.
+**Levels as JSON** (`game/rules/level_io.py`): `level_from_dict`, `level_to_dict` and `load_level(path)`. Format: `{"budget", "tiles": [[id]], "substrates": [[id]], "links": [[[r,c],...]], "cards": [{"effect", "target": {"kind", ...}, "single_use"?}]}`. Target kinds are `fixed`/`from` (with `coords`), `any`/`adjacent` (with `count`) and `card`. All validation is still `Level.__post_init__`. Level files live in `levels/`.
+
+**Demo level** (`make_demo_level` in `level.py`, and identical in `levels/demo.json`): a 3×3 board, a budget of 1000 plays, and 5 cards: a fixed flip, a choose-from flip, an any-2 flip, a retarget and a swap. It uses mixed tile and substrate types and has one link group, {(0,1), (2,0)}.
 
 ## Architecture
 
@@ -64,13 +71,15 @@ Clicking anywhere else cancels back to `Idle`. Invalid tile picks are ignored.
 - `game/rules`: the game logic, with no pygame (`Card`, effects, targets, `Level`, `GameState`, `GameController`, phases, intents, `view_state`).
 - `game/input/translate.py`: turns a left mouse-button-up event into an `Intent` (`ClickedCard`, `ClickedTile` or `ClickedNothing`).
 - `game/view`: pygame layout and rendering. `ScreenLayout` gives the top 5% of the window to the debug panel, the bottom 25% to the hand and the rest to the board.
+- `editor/`: the web level editor, plain HTML/CSS/JS with no build step, made for phone and tablet use. It is served by GitHub Pages from `main` at the repo root (`.nojekyll` stops Jekyll from dropping `__init__.py`). It loads Pyodide (pinned to 314.0.7, which ships Python 3.14) from jsdelivr, fetches the files listed in `editor/modules.json` from `../game/...` into Pyodide's file system, and imports `editor/bridge.py`. The bridge is the only interface between JS and the rules. It provides `catalog()` (tile, substrate and effect ids and allowed target kinds, built from the registries), `validate(json)`, and `start`/`tap_tile`/`tap_card`/`tap_nothing`/`snapshot` for playtesting with the real `GameController`. Levels are stored only in that browser's `localStorage` (`cardgame.levels`). "Copy JSON" exports in the same compact layout as `levels/demo.json`, and "Copy all"/"Import JSON" handle backups.
 
 **Per-frame flow** (`main.py`): event → `translate` → `controller.handle(intent)` → `build_view_state(state, phase)` → `GameRenderer.draw`.
 - `ViewState` is the only bridge from rules to view. It carries the candidate tiles and cards (for highlighting), the picked tiles, the selected card, whether targeting is active, and whether the game is over.
 - Layouts are rebuilt every frame and again after each intent, because the hand size can change.
 
 **Conventions:**
-- Use frozen dataclasses for value types. Type ids are looked up in a module-level `_REGISTRY` dict through a `get_x(id)` function.
+- Use frozen dataclasses for value types. Type ids are looked up in a module-level `_REGISTRY` dict through a `get_x(id)` function, and listed with `x_ids()` (`tile_type_ids`, `substrate_type_ids`, `effect_ids`); the editor builds its palettes from these.
+- Adding or removing a module in `game/core` or `game/rules` means updating `editor/modules.json` (`test.py` fails until it matches).
 - Unions use PEP 695 (`type X = A | B`). Dispatch with `match`, and end every match with `case _: raise ValueError(...)`.
 - Type hints everywhere, no docstrings, very few comments.
 - Level data is tuples of string ids. `Level.__post_init__` validates it, and `make_board()` builds the `Board`.
@@ -79,12 +88,15 @@ Clicking anywhere else cancels back to `Idle`. Invalid tile picks are ignored.
 - the effect class and `_REGISTRY`
 - `can_modify`, `accepts` and `can_target` in `effects.py`
 - `_execute` in `game_controller.py`
+- the editor picks it up automatically through `catalog()`; check `_SAMPLE_TARGETS` in `editor/bridge.py` if it needs new target params
 
 **Adding a new TargetSpec** means updating:
 - `describe`, `required_coords` and `is_candidate` in `targets.py`
 - `_handle_targeting`, `_try_execute` and `_resolve_coords` in `game_controller.py`
 - `_candidates` in `view_state.py`
 - `_check_targets` in `level.py`
+- `TARGET_KINDS`, `target_from_dict` and `target_to_dict` in `level_io.py`
+- `_SAMPLE_TARGETS` in `editor/bridge.py`, and `KIND_LABELS`/`defaultTarget`/the card details UI in `editor/editor.js`
 
 ## History (up to commit 65d23f6, 2026-09-26)
 
@@ -101,7 +113,6 @@ Clicking anywhere else cancels back to `Idle`. Invalid tile picks are ignored.
 
 - `Flip._expand` checks `_flip_allowed` only on the clicked coord. The other tiles in its link group flip even if they are notflippable or their substrate is not ready.
 - `can_target(Flip)` always returns True, so a blocked tile can still be picked. The flip then does nothing but still uses up a play. This may be the intended "changed flip behaviour" from commit 5ce40f2.
-- There is no win condition or goal state; `GameOver` only means the budget ran out.
 - `SIZE` and `TEST_TILE_LIST` in `level.py` are unused.
 - Retarget appends a new card instead of replacing the targeted one, so the hand keeps growing.
 
@@ -109,5 +120,8 @@ Clicking anywhere else cancels back to `Idle`. Invalid tile picks are ignored.
 
 Newest first. Each entry gives the date, the commit (if committed) and what changed.
 
-- **2026-10-01** (uncommitted): added `.gitignore` (bytecode, tool caches, venvs, editor/OS files, `.claude/settings.local.json`). Removed all tracked `__pycache__/*.pyc` files from the index, including the stale root `__pycache__`; they stay on disk but are ignored. This resolves the "pycache tracked" known issue. Also added the Git workflow section: Claude handles git and must ask before committing.
-- **2026-10-01** (uncommitted): added `CLAUDE.md`, which documents the project as of commit 65d23f6. Also added the standing instruction to keep this file current.
+- **2026-10-01** (uncommitted): web level editor for phone/tablet. Added `game/rules/level_io.py` (JSON level format and loader), `x_ids()` registry listing functions, `levels/demo.json`, and `main.py` now takes an optional level path. Added the win condition: all tiles flipped leads to the new `Won` phase (`GameState.is_won`, `ViewState.won`, debug panel line); this resolves the "no win condition" known issue. Added `editor/` (index.html, editor.css, editor.js, bridge.py, modules.json) and `.nojekyll`. `test.py` gained the roundtrip, demo.json and manifest checks. Small changes: the substrate registry order is now plain, oneturn, twoturn (sets the palette order), and the `accepts` error in `Level._check_cards` now names the card index and effect id instead of an object repr.
+
+- **2026-10-01** (uncommitted): added the Response style section (list all changes, keep replies short). Also recorded commit hashes 10a5de3 and fabce7d in this changelog.
+- **2026-10-01** (10a5de3): added `.gitignore` (bytecode, tool caches, venvs, editor/OS files, `.claude/settings.local.json`). Removed all tracked `__pycache__/*.pyc` files from the index, including the stale root `__pycache__`; they stay on disk but are ignored. This resolves the "pycache tracked" known issue. Also added the Git workflow section: Claude handles git and must ask before committing.
+- **2026-10-01** (fabce7d): added `CLAUDE.md`, which documents the project as of commit 65d23f6. Also added the standing instruction to keep this file current.
