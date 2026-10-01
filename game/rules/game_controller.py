@@ -38,8 +38,17 @@ class GameController:
             case ClickedTile() | ClickedNothing():
                 return
             case ClickedCard(index=index):
-                self.phase = Selected(index)
+                self._select(index)
             case _: raise ValueError(f"unhandled intent {intent}")
+        
+    def _select(self, index: int) -> None:
+        self._require_valid_index(index)
+        match self.game_state.hand[index].targets:
+            case Fixed():
+                self.phase = Selected(index)
+            case ChooseFrom() | ChooseAny() | ChooseAdjacent() | ChooseCard():
+                self.phase = Targeting(index)
+            case _: raise ValueError(f"unhandled target {self.game_state.hand[index].targets}")
         
     def _handle_selected(self, intent: Intent, phase: Selected) -> None:
         match intent:
@@ -50,7 +59,7 @@ class GameController:
                     self.phase = Targeting(phase.index)
                     self._try_execute(self.phase)
                 else:
-                    self.phase = Selected(clicked_index)
+                    self._select(clicked_index)
             case _: raise ValueError(f"unhandled intent {intent}")
         
     def _handle_targeting(self, intent: Intent, phase: Targeting) -> None:
@@ -79,8 +88,13 @@ class GameController:
         
     def _handle_targeting_tile(self, intent: Intent, phase: Targeting) -> None:
         match intent:
-            case ClickedNothing() | ClickedCard():
+            case ClickedNothing():
                 self.phase = Idle()
+            case ClickedCard(index=index):
+                if index == phase.index:
+                    self.phase = Idle()
+                else:
+                    self._select(index)
             case ClickedTile(coord=coord):
                 card = self.game_state.hand[phase.index]
                 effect = get_effect(card.effect_id)

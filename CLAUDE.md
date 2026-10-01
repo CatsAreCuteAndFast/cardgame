@@ -55,11 +55,11 @@ Claude handles git for this project: staging, writing commit messages, and keepi
 - Retarget turns `Fixed` into `ChooseFrom` (and back) with the same coords. It **appends** the result to the hand as a new card with `single_use=True`; the original card stays in the hand.
 
 **Controller phases** (`game_controller.py`, `phases.py`):
-1. `Idle`: clicking a card moves to `Selected(index)`.
-2. `Selected(index)`: clicking the same card again moves to `Targeting(index, coords, target_index)`.
-3. `Targeting(index, coords, target_index)`: the card runs once it has enough picks. Afterwards the phase becomes `Won` if all tiles are flipped, `GameOver` if the budget is used up, and `Idle` otherwise. `Won` and `GameOver` ignore all input.
+1. `Idle`: clicking a card selects it (`_select`). A `Fixed` card moves to `Selected(index)`; any other card goes straight to `Targeting(index)`.
+2. `Selected(index)` (only `Fixed` cards): clicking the same card again plays it, so the second click acts as a confirmation. Clicking another card selects that card instead.
+3. `Targeting(index, coords, target_index)`: the card runs once it has enough picks. Afterwards the phase becomes `Won` if all tiles are flipped, `GameOver` if the budget is used up, and `Idle` otherwise. `Won` and `GameOver` ignore all input. While a card is targeting tiles, clicking another card switches to that card, and clicking the same card cancels. While a card is targeting a card (retarget), clicking a card is a pick, and clicks on cards that can't be picked are ignored.
 
-Clicking anywhere else cancels back to `Idle`. Invalid tile picks are ignored.
+Clicking empty space cancels back to `Idle`, and so does clicking a tile while in `Selected`. Invalid tile picks are ignored.
 
 **Levels as JSON** (`game/rules/level_io.py`): `level_from_dict`, `level_to_dict` and `load_level(path)`. Format: `{"budget", "tiles": [[id]], "substrates": [[id]], "links": [[[r,c],...]], "flipped": [[r,c],...], "cards": [{"effect", "target": {"kind", ...}, "single_use"?}]}`. Target kinds are `fixed`/`from` (with `coords`), `any`/`adjacent` (with `count`) and `card`. All validation is still `Level.__post_init__`. Level files live in `levels/`. `levels/pack.json` is the tester pack: a list `[{name, folder?, level}]` in play order, the same format as the editor's "Copy all" and folder "Copy" exports. To publish levels to testers, put them in an editor folder, press the folder's Copy, paste the result into `levels/pack.json`, then commit and push.
 
@@ -124,7 +124,9 @@ Clicking anywhere else cancels back to `Idle`. Invalid tile picks are ignored.
 
 Newest first. Each entry gives the date, the commit (if committed) and what changed.
 
-- **2026-10-01** (uncommitted): filled `levels/pack.json` with the first 8 tester levels (folder "Swap, Flip, and Retarget", levels 1–8), one entry per line and sorted by name (the folder's Copy export had 6 before 5).
+- **2026-10-01** (uncommitted): non-Fixed cards now activate on a single click and go straight to `Targeting`, because the second click only confirmed the choice. `Fixed` cards keep the two-click flow, since their second click is the play itself and guards against misclicks. Added `GameController._select`. While a card is targeting tiles, clicking another card now switches to it instead of cancelling. The editor's status text now reads "tap the card again to play it". Hand card highlight borders (candidate and selected) in the editor and tester page are now 9px instead of 3px. The padding shrank by the same amount, so the card text keeps its width.
+
+- **2026-10-01** (769df48): filled `levels/pack.json` with the first 8 tester levels (folder "Swap, Flip, and Retarget", levels 1–8), one entry per line and sorted by name (the folder's Copy export had 6 before 5).
 - **2026-10-01** (f94c676): removed the level solver for now (Drifl isn't making levels that need it yet; a faster one may come later, see Known issues). Deleted `game/rules/solver.py`, `solve.py` and `editor/solver-worker.js`; removed the solver panel and bridge functions (`solve_start`, `solve_step`, `start_solution`), the `copy()` methods on `Board`/`Tile`/`Substrate`/`GameState`, the solver test, and the worker-only code in `editor/rules.js`. The Known issues note that the demo level can't be won stays.
 - **2026-10-01** (f3fd849): fixed the editor's "Solver error: Failed to execute 'importScripts'…". Pyodide 314 doesn't support classic workers, so `solver-worker.js` is now a module worker (`{ type: "module" }`, `import "./rules.js"`), and `rules.js` loads `pyodide.mjs` with a dynamic import when there is no `document`.
 - **2026-10-01** (796e4db board.js refactor, 69f0ea6 tester page): tester page at `play/` so game testers can play published levels without the editor. Added `play/index.html`, `play/play.js`, `play/play.css` and `levels/pack.json` (starts empty), plus a `test.py` check that every pack level loads. Moved the shared DOM and board/hand rendering from `editor.js` into the new `editor/board.js` (the editor's Play tab behaves the same), and `loadBridge` now takes a `base` path.

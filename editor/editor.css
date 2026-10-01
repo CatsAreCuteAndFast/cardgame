@@ -221,14 +221,14 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .card {
   width: 92px;
   min-height: 120px;
-  padding: 8px 6px;
+  padding: 2px 0;
   border-radius: var(--radius);
   background: #e6dcc0;
   color: #222;
   font-size: .85rem;
   white-space: pre-line;
   text-align: center;
-  border: 3px solid transparent;
+  border: 9px solid transparent;
   cursor: pointer;
 }
 .card.single { background: #d8c8e8; }

@@ -68,7 +68,7 @@ function playStatus(snap, budget) {
   if (snap.won) return { text: `Solved in ${used} play${used === 1 ? "" : "s"}!`, className: "won" };
   if (snap.game_over) return { text: "Out of plays", className: "over" };
   if (snap.targeting) return { text: `Plays left: ${snap.plays} · pick targets`, className: "" };
-  if (snap.selected !== null) return { text: `Plays left: ${snap.plays} · tap the card again to use it`, className: "" };
+  if (snap.selected !== null) return { text: `Plays left: ${snap.plays} · tap the card again to play it`, className: "" };
   return { text: `Plays left: ${snap.plays}`, className: "" };
 }
 
