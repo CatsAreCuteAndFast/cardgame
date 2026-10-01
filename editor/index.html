@@ -14,7 +14,7 @@
     <button class="tab" data-tab="edit">Edit</button>
     <button class="tab" data-tab="play">Play</button>
   </nav>
-  <div class="current" id="current-name"></div>
+  <div class="current"><span id="current-name"></span><button id="sync-status" class="sync-status" hidden></button></div>
 </header>
 
 <main>
@@ -24,6 +24,7 @@
       <button id="new-folder">New folder</button>
       <button id="import-level">Import JSON</button>
       <button id="copy-all">Copy all</button>
+      <button id="sync">Sync</button>
     </div>
     <div id="level-list"></div>
   </section>
@@ -90,6 +91,20 @@
     <div id="move-options" class="move-options"></div>
     <div class="row end">
       <button value="cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="sync-dialog">
+  <form method="dialog">
+    <h2>Sync between devices</h2>
+    <p class="note">Levels are kept in a secret GitHub gist. Make a token at github.com/settings/tokens: a classic token with only the <b>gist</b> scope, or a fine-grained one with Gists read and write. The token is stored only in this browser.</p>
+    <label class="input-field">Token <input id="sync-token" type="password" autocomplete="off" spellcheck="false"></label>
+    <label class="input-field">Gist id <input id="sync-gist" autocomplete="off" spellcheck="false" placeholder="Leave empty to create one from this device"></label>
+    <div class="row end wrap">
+      <button value="cancel">Cancel</button>
+      <button id="sync-disconnect" value="disconnect" class="danger">Turn off</button>
+      <button value="connect" class="primary">Connect</button>
     </div>
   </form>
 </dialog>
