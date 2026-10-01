@@ -63,7 +63,11 @@
   <section id="play" class="screen">
     <div class="row status">
       <span id="play-status"></span>
-      <button id="play-reset">Reset</button>
+      <span class="play-buttons">
+        <button id="play-undo" aria-label="Undo">↶ Undo</button>
+        <button id="play-redo" aria-label="Redo">↷ Redo</button>
+        <button id="play-reset">Reset</button>
+      </span>
     </div>
     <div id="play-error" class="validation bad" hidden></div>
     <div class="board" id="play-board"></div>

@@ -19,6 +19,10 @@ _SAMPLE_TARGETS: dict[str, dict[str, Any]] = {
 }
 
 _controller: GameController | None = None
+_level: dict[str, Any] = {}
+_moves: list[list[Intent]] = []
+_redo: list[list[Intent]] = []
+_pending: list[Intent] = []
 
 def catalog() -> str:
     return json.dumps({
@@ -41,14 +45,43 @@ def validate(level_json: str) -> str | None:
     return None
 
 def start(level_json: str) -> str:
-    global _controller
-    _controller = GameController(GameState(level_from_dict(json.loads(level_json))))
+    global _level
+    _level = json.loads(level_json)
+    _moves.clear()
+    _redo.clear()
+    _replay()
     return snapshot()
+
+def _replay() -> None:
+    global _controller
+    _controller = GameController(GameState(level_from_dict(_level)))
+    _pending.clear()
+    for move in _moves:
+        for intent in move:
+            _controller.handle(intent)
 
 def _handle(intent: Intent) -> str:
     if _controller is None:
         raise ValueError("no game started")
+    plays = _controller.game_state.plays_remaining
     _controller.handle(intent)
+    _pending.append(intent)
+    if _controller.game_state.plays_remaining != plays:
+        _moves.append(list(_pending))
+        _pending.clear()
+        _redo.clear()
+    return snapshot()
+
+def undo() -> str:
+    if _moves:
+        _redo.append(_moves.pop())
+    _replay()
+    return snapshot()
+
+def redo() -> str:
+    if _redo:
+        _moves.append(_redo.pop())
+    _replay()
     return snapshot()
 
 def tap_tile(row: int, col: int) -> str:
@@ -90,4 +123,6 @@ def snapshot() -> str:
         "targeting": view.is_targeting,
         "game_over": view.game_over,
         "won": view.won,
+        "can_undo": bool(_moves),
+        "can_redo": bool(_redo),
     })

@@ -925,6 +925,8 @@ function renderPlay() {
   status.className = "";
   status.textContent = "";
   const snap = playSnapshot;
+  $("play-undo").disabled = !snap?.can_undo;
+  $("play-redo").disabled = !snap?.can_redo;
   if (!snap) return;
 
   const used = level.data.budget - snap.plays;
@@ -1119,6 +1121,14 @@ function init() {
     e.stopPropagation();
     playSnapshot = null;
     render();
+  });
+  $("play-undo").addEventListener("click", (e) => {
+    e.stopPropagation();
+    playTap(() => bridge.undo());
+  });
+  $("play-redo").addEventListener("click", (e) => {
+    e.stopPropagation();
+    playTap(() => bridge.redo());
   });
   $("play").addEventListener("click", (e) => {
     if (e.target.closest("button, .cell")) return;
