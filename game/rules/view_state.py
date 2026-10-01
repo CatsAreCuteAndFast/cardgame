@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from game.core.coord import Coord
-from game.rules.phases import Phase, Idle, Selected, GameOver, Targeting
+from game.rules.phases import Phase, Idle, Selected, GameOver, Targeting, Won
 from game.rules.game_state import GameState
 from game.rules.targets import Fixed, ChooseFrom, ChooseAdjacent, ChooseAny, ChooseCard, is_candidate
 from game.rules.effects import get_effect, can_target, can_modify
@@ -12,6 +12,7 @@ class ViewState:
     candidate_tiles: tuple[Coord, ...] = ()
     candidate_cards: tuple[int, ...] = ()
     game_over: bool = False
+    won: bool = False
     selected: int | None = None
     is_targeting: bool = False
     
@@ -39,6 +40,8 @@ def build_view_state(state: GameState, phase: Phase) -> ViewState:
             return ViewState(state.plays_remaining)
         case GameOver():
             return ViewState(state.plays_remaining, game_over=True)
+        case Won():
+            return ViewState(state.plays_remaining, won=True)
         case Selected(index=index):
             candidate_tiles, candidate_cards = _candidates(state, index, ())
             return ViewState(state.plays_remaining, selected=index, candidate_tiles=candidate_tiles, candidate_cards=candidate_cards)

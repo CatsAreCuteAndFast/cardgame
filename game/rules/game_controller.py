@@ -5,7 +5,7 @@ from game.rules.intents import Intent, ClickedTile, ClickedCard, ClickedNothing
 from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom, required_coords, ChooseCard, is_candidate, ChooseAdjacent
 from game.rules.effects import get_effect, can_modify, Flip, Retarget, Swap, can_target
 from game.rules.card import Card
-from game.rules.phases import Idle, Selected, Targeting, Phase, GameOver
+from game.rules.phases import Idle, Selected, Targeting, Phase, GameOver, Won
 
 class GameController:
     def __init__(self, game_state: GameState) -> None:
@@ -15,7 +15,7 @@ class GameController:
     @property
     def selected_card(self) -> Card | None:
         match self.phase:
-            case Idle() | GameOver():
+            case Idle() | GameOver() | Won():
                 return None
             case Selected(index=index) | Targeting(index=index):
                 return self.game_state.hand[index]
@@ -125,7 +125,9 @@ class GameController:
         self.game_state.advance_turn()
         if card.single_use:
             self._remove_card(phase.index)
-        if self.game_state.can_play:
+        if self.game_state.is_won:
+            self.phase = Won()
+        elif self.game_state.can_play:
             self.phase = Idle()
         else:
             self.phase = GameOver()
@@ -133,7 +135,7 @@ class GameController:
         
     def handle(self, intent: Intent) -> None:
         match self.phase:
-            case GameOver():
+            case GameOver() | Won():
                 return
             case Idle():
                 self._handle_idle(intent)

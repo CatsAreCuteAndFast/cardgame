@@ -16,5 +16,8 @@ class Targeting:
 
 @dataclass(frozen=True) 
 class GameOver: ...
+
+@dataclass(frozen=True)
+class Won: ...
     
-type Phase = Idle | Selected | Targeting | GameOver
+type Phase = Idle | Selected | Targeting | GameOver | Won

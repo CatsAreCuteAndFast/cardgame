@@ -20,7 +20,7 @@ class GameRenderer:
         self.draw_debug_panel(surface, layouts.debug_panel_rect, view_state)
         
     def draw_debug_panel(self, surface: pygame.Surface, debug_panel_rect: pygame.Rect, view_state: ViewState) -> None:
-        debug_strings = ["plays remaining: " + str(view_state.plays_remaining), "game over: " + str(view_state.game_over)]
+        debug_strings = ["plays remaining: " + str(view_state.plays_remaining), "game over: " + str(view_state.game_over), "won: " + str(view_state.won)]
         font = pygame.font.Font(None, debug_panel_rect.height)
         text = ", ".join(debug_strings)
         text_surf = font.render(text, True, "white")

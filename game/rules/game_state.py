@@ -8,6 +8,10 @@ class GameState:
         self.board = level.make_board()
         self.hand = list(level.card_list)
         
+    @property
+    def is_won(self) -> bool:
+        return all(tile.is_flipped for tile in self.board.tiles)
+
     @property 
     def can_play(self) -> bool:
         return self.plays_remaining > 0
