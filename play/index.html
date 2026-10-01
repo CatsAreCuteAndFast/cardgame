@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16181d">
+<title>Card Game Testing</title>
+<link rel="stylesheet" href="../editor/editor.css">
+<link rel="stylesheet" href="play.css">
+</head>
+<body>
+<header class="top">
+  <nav class="tabs" role="tablist">
+    <button class="tab" data-tab="levels">Levels</button>
+    <button class="tab" data-tab="play">Play</button>
+  </nav>
+  <div class="current"><span id="current-name"></span></div>
+</header>
+
+<main>
+  <section id="levels" class="screen">
+    <p id="pack-error" class="validation bad" hidden></p>
+    <ol id="level-list" class="level-list"></ol>
+  </section>
+
+  <section id="play" class="screen">
+    <p id="play-empty" class="empty" hidden>Pick a level on the Levels tab.</p>
+    <div class="row status">
+      <span id="play-status"></span>
+      <span class="play-buttons">
+        <button id="play-undo" aria-label="Undo">↶ Undo</button>
+        <button id="play-redo" aria-label="Redo">↷ Redo</button>
+        <button id="play-reset">Reset</button>
+      </span>
+    </div>
+    <div id="play-error" class="validation bad" hidden></div>
+    <div class="board" id="play-board"></div>
+    <div class="hand" id="play-hand"></div>
+    <div class="row end" id="play-next-row" hidden>
+      <button id="play-next" class="primary">Next level →</button>
+    </div>
+  </section>
+</main>
+
+<div class="loading" id="loading">Loading game rules…</div>
+
+<script src="../editor/rules.js"></script>
+<script src="../editor/board.js"></script>
+<script src="play.js"></script>
+</body>
+</html>

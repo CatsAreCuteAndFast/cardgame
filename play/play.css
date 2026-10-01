@@ -1,0 +1,3 @@
+.level-item .number { color: var(--muted); font-weight: 600; min-width: 1.8em; }
+.level-item .done { color: var(--good); font-weight: 600; }
+.level-item.pack-item { cursor: pointer; flex-wrap: nowrap; }

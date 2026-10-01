@@ -87,6 +87,20 @@ def test_solver() -> None:
     assert isinstance(result, Unsolvable) and result.reason.startswith("every reachable position"), result
 
 
+def test_tester_pack_loads() -> None:
+    import json
+    from game.rules.level_io import level_from_dict
+
+    pack = json.loads((ROOT / "levels/pack.json").read_text())
+    assert isinstance(pack, list), "levels/pack.json should be a list"
+    for entry in pack:
+        assert isinstance(entry, dict) and isinstance(entry.get("name"), str) and "level" in entry, f"bad pack entry {entry!r}"
+        try:
+            level_from_dict(entry["level"])
+        except (ValueError, KeyError, TypeError) as error:
+            raise AssertionError(f"pack level {entry['name']!r} is invalid: {error}") from error
+
+
 def test_editor_manifest_matches_packages() -> None:
     import json
 
@@ -104,5 +118,7 @@ if __name__ == "__main__":
     print("ok: level dict roundtrip")
     test_solver()
     print("ok: solver")
+    test_tester_pack_loads()
+    print("ok: tester pack")
     test_editor_manifest_matches_packages()
     print("ok: editor manifest")
