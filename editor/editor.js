@@ -996,7 +996,7 @@ function queueSolve(json) {
 function postSolve(json) {
   try {
     if (!solver) {
-      solver = new Worker("solver-worker.js");
+      solver = new Worker("solver-worker.js", { type: "module" });
       solver.onmessage = ({ data }) => {
         if (data.id !== solveJob) return;
         solve.result = data.result ?? null;

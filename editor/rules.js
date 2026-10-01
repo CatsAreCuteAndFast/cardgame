@@ -12,7 +12,11 @@ async function fetchText(path) {
 
 async function loadPyodideScript() {
   if (typeof loadPyodide === "function") return;
-  if (typeof importScripts === "function") return importScripts(PYODIDE_URL + "pyodide.js");
+  // Pyodide only runs in module workers, which can't load pyodide.js
+  if (typeof document === "undefined") {
+    globalThis.loadPyodide = (await import(PYODIDE_URL + "pyodide.mjs")).loadPyodide;
+    return;
+  }
   await new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = PYODIDE_URL + "pyodide.js";
@@ -36,3 +40,6 @@ async function loadBridge() {
   pyodide.runPython(`import sys\nif "${home}" not in sys.path: sys.path.insert(0, "${home}")`);
   return pyodide.pyimport("bridge");
 }
+
+// the solver worker imports this file as a module, where top-level functions aren't global
+globalThis.loadBridge = loadBridge;

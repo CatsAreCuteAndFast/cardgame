@@ -1,6 +1,4 @@
-"use strict";
-
-importScripts("rules.js");
+import "./rules.js";
 
 let ready = null;
 let job = 0;
