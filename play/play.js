@@ -54,7 +54,16 @@ function tap(call) {
   render();
 }
 
+function hover(i, row, col) {
+  try {
+    return JSON.parse(bridge.hover(i, row, col));
+  } catch {
+    return null;
+  }
+}
+
 function render() {
+  document.documentElement.style.setProperty("--top-h", `${document.querySelector(".top").offsetHeight}px`);
   for (const button of document.querySelectorAll(".tab")) button.classList.toggle("active", button.dataset.tab === tab);
   for (const screen of document.querySelectorAll(".screen")) screen.classList.toggle("active", screen.id === tab);
   $("current-name").textContent = index === null ? "" : `${index + 1}. ${pack[index].name}`;
@@ -104,7 +113,9 @@ function renderPlay() {
   $("play-undo").disabled = !snap?.can_undo;
   $("play-redo").disabled = !snap?.can_redo;
   $("play-reset").disabled = !snap;
-  $("play-next-row").hidden = !(snap?.won && index + 1 < pack.length);
+  $("play-next").hidden = !(snap?.won && index + 1 < pack.length);
+  $("play-cancel").hidden = !(snap && snap.selected !== null);
+  $("play-prompt").textContent = snap ? playPrompt(snap) : "";
   const { text, className } = snap ? playStatus(snap, pack[index].level.budget) : { text: "", className: "" };
   status.textContent = text;
   status.className = className;
@@ -174,10 +185,20 @@ function init() {
     render();
     window.scrollTo(0, 0);
   });
+  $("play-cancel").addEventListener("click", (e) => (e.stopPropagation(), tap(() => bridge.tap_nothing())));
   $("play").addEventListener("click", (e) => {
     if (e.target.closest("button, .cell")) return;
     tap(() => bridge.tap_nothing());
   });
+  attachPlayInput($("play-board"), $("play-hand"), {
+    snap: () => snap,
+    card: (i) => tap(() => bridge.tap_card(i)),
+    tile: (row, col) => tap(() => bridge.tap_tile(row, col)),
+    nothing: () => tap(() => bridge.tap_nothing()),
+    hover: (i, row, col) => hover(i, row, col),
+    render,
+  });
+  window.addEventListener("resize", render);
   render();
   loadPack();
   loadRules();

@@ -41,6 +41,7 @@ function normalizeLevels() {
   for (const level of levels) {
     if (!folders.some((folder) => folder.id === level.folder)) level.folder = null;
     if (!Array.isArray(level.data.flipped)) level.data.flipped = [];
+    if (!Array.isArray(level.data.counters)) level.data.counters = [];
   }
   if (!levels.some((level) => level.id === currentId)) currentId = levels[0]?.id ?? null;
 }
@@ -255,6 +256,7 @@ function blankLevel(width = 3, height = 3) {
     substrates: grid(width, height, () => catalog.substrates[0].id),
     links: [],
     flipped: [],
+    counters: [],
     cards: [{ effect: "flip", target: { kind: "any", count: 1 } }],
   };
 }
@@ -293,7 +295,7 @@ function formatLevel(data) {
   const inline = (key, items) => ` "${key}": [${items.map((item) => JSON.stringify(item).replaceAll(",", ", ")).join(", ")}]`;
   return (
     `{\n "budget": ${data.budget},\n` +
-    [block("tiles", data.tiles), block("substrates", data.substrates), block("links", data.links), inline("flipped", data.flipped), block("cards", data.cards)].join(",\n") +
+    [block("tiles", data.tiles), block("substrates", data.substrates), block("links", data.links), inline("flipped", data.flipped), inline("counters", data.counters), block("cards", data.cards)].join(",\n") +
     "\n}\n"
   );
 }
@@ -308,6 +310,7 @@ function normalizeLevel(raw) {
     substrates: raw.substrates,
     links: Array.isArray(raw.links) ? raw.links : [],
     flipped: Array.isArray(raw.flipped) ? raw.flipped : [],
+    counters: Array.isArray(raw.counters) ? raw.counters : [],
     cards: Array.isArray(raw.cards) ? raw.cards : [],
   };
 }
@@ -327,6 +330,7 @@ function resize(data, width, height) {
   const inside = ([r, c]) => r < height && c < width;
   data.links = data.links.map((group) => group.filter(inside)).filter((group) => group.length > 0);
   data.flipped = data.flipped.filter(inside);
+  data.counters = data.counters.filter(inside);
   for (const card of data.cards) {
     if (card.target.coords) card.target.coords = card.target.coords.filter(inside);
   }
@@ -354,6 +358,19 @@ function toggleLink(data, row, col, groupIndex) {
   if (data.links.length !== before && brush.links >= data.links.length) brush.links = data.links.length;
 }
 
+function periodAt(data, row, col) {
+  return catalog.substrates.find((s) => s.id === data.substrates[row][col])?.period ?? 0;
+}
+
+function counterAt(data, row, col) {
+  return data.counters.find(([r, c]) => r === row && c === col)?.[2] ?? periodAt(data, row, col);
+}
+
+function setCounter(data, row, col, counter) {
+  data.counters = data.counters.filter(([r, c]) => !(r === row && c === col));
+  if (counter !== periodAt(data, row, col)) data.counters.push([row, col, counter]);
+}
+
 function toggleCoord(card, row, col) {
   const coords = card.target.coords;
   const index = coords.findIndex((coord) => sameCoord(coord, [row, col]));
@@ -369,6 +386,12 @@ function editTap(row, col) {
     data.tiles[row][col] = brush.tiles;
   } else if (mode === "substrates") {
     data.substrates[row][col] = brush.substrates;
+    setCounter(data, row, col, periodAt(data, row, col));
+  } else if (mode === "counters") {
+    const period = periodAt(data, row, col);
+    if (period === 0) return;
+    const counter = counterAt(data, row, col);
+    setCounter(data, row, col, counter === 0 ? period : counter - 1);
   } else if (mode === "links") {
     toggleLink(data, row, col, brush.links);
   } else if (mode === "flipped") {
@@ -649,15 +672,14 @@ function renderEdit() {
   for (let row = 0; row < height; row++) {
     for (let col = 0; col < width; col++) {
       const order = picked.findIndex((coord) => sameCoord(coord, [row, col]));
-      const substrate = catalog.substrates.find((s) => s.id === data.substrates[row][col]);
       board.append(
         renderCell(
           {
             type: data.tiles[row][col],
             flipped: data.flipped.some((coord) => sameCoord(coord, [row, col])),
             link: linkOf(data, row, col),
-            period: substrate?.period ?? 0,
-            counter: substrate?.period ?? 0,
+            period: periodAt(data, row, col),
+            counter: counterAt(data, row, col),
           },
           {
             classes: order !== -1 ? ["coord-on"] : [],
@@ -699,6 +721,8 @@ function renderPalette(data) {
         ),
       );
     }
+  } else if (mode === "counters") {
+    palette.append(el("span", { class: "hint", textContent: "Tap a timed substrate to change how many turns it starts with (0 = ready)" }));
   } else if (mode === "flipped") {
     palette.append(el("span", { class: "hint", textContent: `Tap tiles to set which start flipped (${data.flipped.length} flipped)` }));
   } else if (mode === "links") {
@@ -866,6 +890,8 @@ function renderPlay() {
   const snap = playSnapshot;
   $("play-undo").disabled = !snap?.can_undo;
   $("play-redo").disabled = !snap?.can_redo;
+  $("play-cancel").hidden = !(snap && snap.selected !== null);
+  $("play-prompt").textContent = snap ? playPrompt(snap) : "";
   if (!snap) return;
 
   const { text, className } = playStatus(snap, level.data.budget);
@@ -1022,9 +1048,27 @@ function init() {
     e.stopPropagation();
     playTap(() => bridge.redo());
   });
+  $("play-cancel").addEventListener("click", (e) => {
+    e.stopPropagation();
+    playTap(() => bridge.tap_nothing());
+  });
   $("play").addEventListener("click", (e) => {
     if (e.target.closest("button, .cell")) return;
     playTap(() => bridge.tap_nothing());
+  });
+  attachPlayInput($("play-board"), $("play-hand"), {
+    snap: () => playSnapshot,
+    card: (index) => playTap(() => bridge.tap_card(index)),
+    tile: (row, col) => playTap(() => bridge.tap_tile(row, col)),
+    nothing: () => playTap(() => bridge.tap_nothing()),
+    hover: (index, row, col) => {
+      try {
+        return JSON.parse(bridge.hover(index, row, col));
+      } catch {
+        return null;
+      }
+    },
+    render,
   });
 
   $("sync").addEventListener("click", showSyncDialog);

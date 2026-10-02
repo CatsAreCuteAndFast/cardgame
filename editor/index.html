@@ -43,6 +43,7 @@
       <button data-mode="substrates">Substrates</button>
       <button data-mode="links">Links</button>
       <button data-mode="flipped">Flipped</button>
+      <button data-mode="counters">Timers</button>
     </div>
     <div class="palette" id="palette"></div>
     <div class="banner" id="pick-banner" hidden></div>
@@ -71,6 +72,10 @@
     </div>
     <div id="play-error" class="validation bad" hidden></div>
     <div class="board" id="play-board"></div>
+    <div class="row prompt">
+      <span id="play-prompt"></span>
+      <button id="play-cancel" class="small" hidden>Cancel</button>
+    </div>
     <div class="hand" id="play-hand"></div>
   </section>
 </main>
