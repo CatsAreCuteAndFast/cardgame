@@ -14,6 +14,7 @@
   [[0, 1], [2, 0]]
  ],
  "flipped": [],
+ "counters": [],
  "cards": [
   {"effect": "flip", "target": {"kind": "fixed", "coords": [[0, 1], [2, 2]]}},
   {"effect": "flip", "target": {"kind": "from", "coords": [[1, 1], [2, 0], [2, 2]]}},

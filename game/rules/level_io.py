@@ -62,6 +62,7 @@ def level_from_dict(data: dict[str, Any]) -> Level:
             tuple(tuple(str(substrate_id) for substrate_id in row) for row in data["substrates"]),
             tuple(_coords_from(group) for group in data.get("links", [])),
             _coords_from(data.get("flipped", [])),
+            tuple((Coord(int(row), int(col)), int(counter)) for row, col, counter in data.get("counters", [])),
         )
     except KeyError as error:
         raise ValueError(f"missing field {error}") from None
@@ -75,6 +76,7 @@ def level_to_dict(level: Level) -> dict[str, Any]:
         "substrates": [list(row) for row in level.substrate_list],
         "links": [_coords_to(group) for group in level.link_groups],
         "flipped": _coords_to(level.flipped),
+        "counters": [[coord.row, coord.col, counter] for coord, counter in level.counters],
         "cards": [_card_to_dict(card) for card in level.card_list],
     }
 

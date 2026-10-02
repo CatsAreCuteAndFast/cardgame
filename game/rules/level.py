@@ -32,6 +32,7 @@ class Level:
     substrate_list: tuple[tuple[str, ...], ...]
     link_groups: tuple[tuple[Coord, ...], ...] = ()
     flipped: tuple[Coord, ...] = ()
+    counters: tuple[tuple[Coord, int], ...] = ()
     
     @property 
     def size(self) -> tuple[int, int]:
@@ -43,6 +44,7 @@ class Level:
         self._check_cards()
         self._check_links()
         self._check_flipped()
+        self._check_counters()
         
     def _check_tiles(self) -> None:
         if not self.tile_list:
@@ -131,6 +133,19 @@ class Level:
         if len(self.flipped) == width * height:
             raise ValueError("every tile starts flipped, so the level is already solved")
 
+    def _check_counters(self) -> None:
+        width, height = self.size
+        seen: set[Coord] = set()
+        for coord, counter in self.counters:
+            if not (0 <= coord.row < height and 0 <= coord.col < width):
+                raise ValueError(f"substrate counter {coord} is out of bounds {width}x{height}")
+            if coord in seen:
+                raise ValueError(f"substrate counter for {coord} is listed more than once")
+            seen.add(coord)
+            period = get_substrate_type(self.substrate_list[coord.row][coord.col]).period
+            if not 0 <= counter <= period:
+                raise ValueError(f"substrate counter at {coord} is {counter}, must be 0..{period}")
+
     def make_board(self) -> Board:
         width, height = self.size
         
@@ -147,9 +162,10 @@ class Level:
             for col_index, tile_id in enumerate(row)
         ]
         
-        board_substrate_list = [Substrate(get_substrate_type(substrate_id))
-            for substrate_row in self.substrate_list
-            for substrate_id in substrate_row
+        counters = dict(self.counters)
+        board_substrate_list = [Substrate(get_substrate_type(substrate_id), counters.get(Coord(row_index, col_index)))
+            for row_index, substrate_row in enumerate(self.substrate_list)
+            for col_index, substrate_id in enumerate(substrate_row)
         ]
         
         return Board((width, height), board_tile_list, board_substrate_list)

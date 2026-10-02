@@ -1,13 +1,16 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
 from game.core.substratetype import SubstrateType
 
 @dataclass
 class Substrate:
     type: SubstrateType
+    start: InitVar[int | None] = None
     counter: int = field(init=False)
     
-    def __post_init__(self) -> None:
-        self.counter = self.type.period
+    def __post_init__(self, start: int | None) -> None:
+        self.counter = self.type.period if start is None else start
+        if not 0 <= self.counter <= self.type.period:
+            raise ValueError(f"{self.type.id} counter must be 0..{self.type.period}, got {self.counter}")
         
     @property
     def is_ready(self) -> bool:
