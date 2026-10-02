@@ -8,7 +8,7 @@ from game.rules.level_io import level_from_dict, target_from_dict, target_to_dic
 from game.rules.game_state import GameState
 from game.rules.game_controller import GameController
 from game.rules.intents import Intent, ClickedCard, ClickedTile, ClickedNothing
-from game.rules.view_state import build_view_state
+from game.rules.view_state import build_view_state, peek_view_state
 
 _SAMPLE_TARGETS: dict[str, dict[str, Any]] = {
     "fixed": {"kind": "fixed", "coords": []},
@@ -95,6 +95,17 @@ def tap_nothing() -> str:
 
 def _coords(coords: tuple[Coord, ...]) -> list[list[int]]:
     return [[c.row, c.col] for c in coords]
+
+def peek(index: int) -> str:
+    if _controller is None:
+        raise ValueError("no game started")
+    view = peek_view_state(_controller.game_state, index)
+    return json.dumps({
+        "candidate_tiles": _coords(view.candidate_tiles),
+        "candidate_cards": list(view.candidate_cards),
+        "preview": _coords(view.preview),
+        "blocked": _coords(view.blocked),
+    })
 
 def snapshot() -> str:
     if _controller is None:

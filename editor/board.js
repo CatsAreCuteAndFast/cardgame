@@ -180,8 +180,9 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
 
 // a drag only acts on drop: a fixed card dropped on the board plays, other tile cards get selected,
 // and retarget is dropped on the card to change; swiping picks neighbouring tiles.
+// while a tile card is dragged, its options and changes fade in as it nears the board's centre (--drag 0..1).
 // every gesture ends as the same bridge calls that taps make
-// api: { snap(), card(i), tile(row, col), nothing(), render() }
+// api: { snap(), card(i), tile(row, col), nothing(), peek(i), render() }
 function attachPlayInput(board, hand, api) {
   const DRAG_START = 10;
   let press = null;
@@ -209,6 +210,28 @@ function attachPlayInput(board, hand, api) {
     if (!card) return (press = null);
     press.ghost = el("div", { class: "card drag-ghost" + (card.single_use ? " single" : ""), textContent: card.label });
     document.body.append(press.ghost);
+    const peek = api.peek(press.index);
+    if (!peek) return;
+    for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("candidate", "targeting", "picked");
+    for (const node of hand.querySelectorAll(".card")) node.classList.remove("candidate");
+    if (card.kind === "card") {
+      for (const index of peek.candidate_cards) hand.querySelector(`.card[data-index="${index}"]`)?.classList.add("candidate");
+      return;
+    }
+    board.classList.add("dragging");
+    board.style.setProperty("--drag", 0);
+    for (const coord of peek.candidate_tiles) findCell(board, coord)?.classList.add("targeting");
+    showPreview(board, peek.preview, peek.blocked, card.effect);
+  }
+
+  function dragStrength(e) {
+    const rect = board.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const full = Math.min(rect.width, rect.height) * 0.15;
+    const start = Math.hypot(press.x - cx, press.y - cy);
+    const now = Math.hypot(e.clientX - cx, e.clientY - cy);
+    return Math.min(1, Math.max(0, (start - now) / Math.max(1, start - full)));
   }
 
   function moveCardDrag(e) {
@@ -218,7 +241,7 @@ function attachPlayInput(board, hand, api) {
     const card = snap.hand[press.index];
     clearDropTargets();
     if (card.kind !== "card") {
-      if (over(board, e)) board.classList.add("drop-target");
+      board.style.setProperty("--drag", dragStrength(e).toFixed(3));
       return;
     }
     const target = under(e, ".card[data-index]");
@@ -265,6 +288,8 @@ function attachPlayInput(board, hand, api) {
     if (!press?.dragging) return (press = null);
     press.ghost?.remove();
     clearDropTargets();
+    board.classList.remove("dragging");
+    board.style.removeProperty("--drag");
     suppressClickUntil = performance.now() + 50;
     try {
       if (cancelled) api.render();

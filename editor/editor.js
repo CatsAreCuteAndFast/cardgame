@@ -1063,6 +1063,13 @@ function init() {
     card: (index) => playTap(() => bridge.tap_card(index)),
     tile: (row, col) => playTap(() => bridge.tap_tile(row, col)),
     nothing: () => playTap(() => bridge.tap_nothing()),
+    peek: (index) => {
+      try {
+        return JSON.parse(bridge.peek(index));
+      } catch {
+        return null;
+      }
+    },
     render,
   });
 

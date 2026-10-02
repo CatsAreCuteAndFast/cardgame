@@ -86,11 +86,14 @@ def test_card_play() -> None:
     from game.rules.game_state import GameState
     from game.rules.game_controller import GameController
     from game.rules.intents import ClickedCard, ClickedTile
-    from game.rules.view_state import build_view_state
+    from game.rules.view_state import build_view_state, peek_view_state
     from game.rules.phases import Idle, Targeting
 
     controller = GameController(GameState(make_demo_level()))
     state = controller.game_state
+    peek = peek_view_state(state, 0)
+    assert peek.preview == (Coord(0, 1), Coord(2, 0), Coord(2, 2)) and controller.phase == Idle(), "peeking must not select"
+    assert peek_view_state(state, 3).candidate_cards == (0, 1), "retarget can change the fixed and choose-from cards"
     controller.handle(ClickedCard(0))
     view = build_view_state(state, controller.phase)
     assert view.preview == (Coord(0, 1), Coord(2, 0), Coord(2, 2)), f"fixed flip preview {view.preview}"

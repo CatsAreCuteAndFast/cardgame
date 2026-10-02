@@ -50,6 +50,14 @@ def _preview(state: GameState, index: int, picked: tuple[Coord, ...]) -> tuple[t
         case _:
             raise ValueError(f"unhandled targeting {card.targets}")
 
+def _targeting_view(state: GameState, index: int, coords: tuple[Coord, ...]) -> ViewState:
+    candidate_tiles, candidate_cards = _candidates(state, index, coords)
+    preview, blocked_coords = _preview(state, index, coords)
+    return ViewState(state.plays_remaining, picked=coords, candidate_tiles=candidate_tiles, candidate_cards=candidate_cards, selected=index, is_targeting=True, preview=preview, blocked=blocked_coords, needed=required_coords(state.hand[index].targets))
+
+def peek_view_state(state: GameState, index: int) -> ViewState:
+    return _targeting_view(state, index, ())
+
 def build_view_state(state: GameState, phase: Phase) -> ViewState:
     match phase:
         case Idle():
@@ -59,8 +67,6 @@ def build_view_state(state: GameState, phase: Phase) -> ViewState:
         case Won():
             return ViewState(state.plays_remaining, won=True)
         case Targeting(index=index, coords=coords):
-            candidate_tiles, candidate_cards = _candidates(state, index, coords)
-            preview, blocked_coords = _preview(state, index, coords)
-            return ViewState(state.plays_remaining, picked=coords, candidate_tiles=candidate_tiles, candidate_cards=candidate_cards, selected=index, is_targeting=True, preview=preview, blocked=blocked_coords, needed=required_coords(state.hand[index].targets))
+            return _targeting_view(state, index, coords)
         case _:
             raise ValueError(f"unhandled phase {phase}")

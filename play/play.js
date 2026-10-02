@@ -54,6 +54,14 @@ function tap(call) {
   render();
 }
 
+function peek(i) {
+  try {
+    return JSON.parse(bridge.peek(i));
+  } catch {
+    return null;
+  }
+}
+
 function render() {
   document.documentElement.style.setProperty("--top-h", `${document.querySelector(".top").offsetHeight}px`);
   for (const button of document.querySelectorAll(".tab")) button.classList.toggle("active", button.dataset.tab === tab);
@@ -189,6 +197,7 @@ function init() {
     card: (i) => tap(() => bridge.tap_card(i)),
     tile: (row, col) => tap(() => bridge.tap_tile(row, col)),
     nothing: () => tap(() => bridge.tap_nothing()),
+    peek: (i) => peek(i),
     render,
   });
   window.addEventListener("resize", render);

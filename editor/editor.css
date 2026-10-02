@@ -177,9 +177,16 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .cell.targeting .tile { outline: 9px solid var(--targeting); outline-offset: -9px; }
 .cell.picked .tile { outline: 12px solid var(--picked); outline-offset: -12px; }
 .cell.coord-on .tile { outline: 12px solid var(--picked); outline-offset: -12px; }
-.cell.drop-target .tile { outline: 12px solid var(--picked); outline-offset: -12px; }
 .board.swipe { touch-action: none; }
-.board.drop-target { outline: 3px dashed var(--picked); outline-offset: 4px; border-radius: 8px; }
+.board.dragging {
+  outline: 3px dashed color-mix(in srgb, var(--picked) calc(var(--drag, 0) * 100%), transparent);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.board.dragging .cell.targeting .tile { outline-color: color-mix(in srgb, var(--targeting) calc(var(--drag, 0) * 100%), transparent); }
+.board.dragging .cell.preview .tile::before { opacity: calc(var(--drag, 0) * .6); }
+.board.dragging .cell.preview-outline .tile::before,
+.board.dragging .cell.blocked .tile::after { opacity: var(--drag, 0); }
 
 .cell.preview .tile::before,
 .cell.preview-outline .tile::before {
