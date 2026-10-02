@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from game.core.coord import Coord
-from game.rules.phases import Phase, Idle, Selected, GameOver, Targeting, Won
+from game.rules.phases import Phase, Idle, GameOver, Targeting, Won
 from game.rules.game_state import GameState
 from game.rules.targets import Fixed, ChooseFrom, ChooseAdjacent, ChooseAny, ChooseCard, is_candidate, required_coords
 from game.rules.effects import get_effect, can_target, can_modify, affected, blocked
@@ -50,19 +50,6 @@ def _preview(state: GameState, index: int, picked: tuple[Coord, ...]) -> tuple[t
         case _:
             raise ValueError(f"unhandled targeting {card.targets}")
 
-def hover_preview(state: GameState, phase: Phase, index: int, coord: Coord) -> tuple[tuple[Coord, ...], tuple[Coord, ...]]:
-    card = state.hand[index]
-    picked = phase.coords if isinstance(phase, Targeting) and phase.index == index else ()
-    match card.targets:
-        case Fixed() | ChooseCard():
-            return _preview(state, index, picked)
-        case ChooseFrom() | ChooseAny() | ChooseAdjacent():
-            if is_candidate(card.targets, picked, coord) and can_target(get_effect(card.effect_id), state.board, coord):
-                return _preview(state, index, picked + (coord,))
-            return ((), ())
-        case _:
-            raise ValueError(f"unhandled targeting {card.targets}")
-
 def build_view_state(state: GameState, phase: Phase) -> ViewState:
     match phase:
         case Idle():
@@ -71,10 +58,6 @@ def build_view_state(state: GameState, phase: Phase) -> ViewState:
             return ViewState(state.plays_remaining, game_over=True)
         case Won():
             return ViewState(state.plays_remaining, won=True)
-        case Selected(index=index):
-            candidate_tiles, candidate_cards = _candidates(state, index, ())
-            preview, blocked_coords = _preview(state, index, ())
-            return ViewState(state.plays_remaining, selected=index, candidate_tiles=candidate_tiles, candidate_cards=candidate_cards, preview=preview, blocked=blocked_coords, needed=required_coords(state.hand[index].targets))
         case Targeting(index=index, coords=coords):
             candidate_tiles, candidate_cards = _candidates(state, index, coords)
             preview, blocked_coords = _preview(state, index, coords)

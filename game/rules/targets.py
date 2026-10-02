@@ -43,9 +43,7 @@ def describe(spec: TargetSpec) -> str:
         
 def required_coords(spec: TargetSpec) -> int:
     match spec:
-        case Fixed():
-            return 0
-        case ChooseFrom():
+        case Fixed() | ChooseFrom():
             return 1
         case ChooseAny(count=count) | ChooseAdjacent(count=count):
             return count

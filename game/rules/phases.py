@@ -5,10 +5,6 @@ from game.core.coord import Coord
 class Idle: ...
 
 @dataclass(frozen=True)
-class Selected:
-    index: int
-    
-@dataclass(frozen=True)
 class Targeting:
     index: int
     coords: tuple[Coord, ...] = ()
@@ -20,4 +16,4 @@ class GameOver: ...
 @dataclass(frozen=True)
 class Won: ...
     
-type Phase = Idle | Selected | Targeting | GameOver | Won
+type Phase = Idle | Targeting | GameOver | Won

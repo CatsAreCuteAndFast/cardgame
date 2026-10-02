@@ -80,29 +80,41 @@ def test_editor_manifest_matches_packages() -> None:
     assert listed == actual, f"editor/modules.json is out of date, expected {actual}"
 
 
-def test_preview() -> None:
+def test_card_play() -> None:
     from game.core.coord import Coord
     from game.rules.level import make_demo_level
     from game.rules.game_state import GameState
     from game.rules.game_controller import GameController
     from game.rules.intents import ClickedCard, ClickedTile
-    from game.rules.view_state import build_view_state, hover_preview
+    from game.rules.view_state import build_view_state
+    from game.rules.phases import Idle, Targeting
 
     controller = GameController(GameState(make_demo_level()))
     state = controller.game_state
     controller.handle(ClickedCard(0))
     view = build_view_state(state, controller.phase)
     assert view.preview == (Coord(0, 1), Coord(2, 0), Coord(2, 2)), f"fixed flip preview {view.preview}"
-    assert view.blocked == () and view.needed == 0
+    assert view.blocked == () and view.needed == 1
+    assert view.candidate_tiles == (Coord(0, 1), Coord(2, 2)), "a fixed card is played by picking one of its tiles"
 
-    assert hover_preview(state, controller.phase, 2, Coord(0, 2)) == ((), (Coord(0, 2),)), "notflippable should be blocked"
-    assert hover_preview(state, controller.phase, 4, Coord(1, 1)) == ((), ()), "notswappable can't be picked"
+    controller.handle(ClickedTile(Coord(0, 0)))
+    assert controller.phase == Targeting(0), "a tile outside a fixed card is ignored"
+    controller.handle(ClickedCard(0))
+    assert controller.phase == Idle(), "tapping the selected fixed card again deselects it"
+
+    controller.handle(ClickedCard(2))
+    controller.handle(ClickedTile(Coord(0, 2)))
+    view = build_view_state(state, controller.phase)
+    assert view.blocked == (Coord(0, 2),) and view.preview == (), "notflippable should be blocked"
 
     controller.handle(ClickedCard(4))
     controller.handle(ClickedTile(Coord(0, 0)))
     view = build_view_state(state, controller.phase)
     assert view.needed == 2 and view.preview == ()
-    assert hover_preview(state, controller.phase, 4, Coord(1, 0)) == ((Coord(0, 0), Coord(1, 0)), ())
+
+    controller.handle(ClickedCard(0))
+    controller.handle(ClickedTile(Coord(2, 2)))
+    assert state.plays_remaining == 999 and state.board.get_tile(Coord(2, 0)).is_flipped, "fixed flip should play"
 
 
 if __name__ == "__main__":
@@ -114,5 +126,5 @@ if __name__ == "__main__":
     print("ok: tester pack")
     test_editor_manifest_matches_packages()
     print("ok: editor manifest")
-    test_preview()
-    print("ok: preview")
+    test_card_play()
+    print("ok: card play and preview")

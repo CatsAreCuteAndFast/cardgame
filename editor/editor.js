@@ -883,8 +883,6 @@ function renderPlay() {
   const board = $("play-board");
   const hand = $("play-hand");
   const status = $("play-status");
-  board.replaceChildren();
-  hand.replaceChildren();
   status.className = "";
   status.textContent = "";
   const snap = playSnapshot;
@@ -892,7 +890,11 @@ function renderPlay() {
   $("play-redo").disabled = !snap?.can_redo;
   $("play-cancel").hidden = !(snap && snap.selected !== null);
   $("play-prompt").textContent = snap ? playPrompt(snap) : "";
-  if (!snap) return;
+  if (!snap) {
+    board.replaceChildren();
+    hand.replaceChildren();
+    return;
+  }
 
   const { text, className } = playStatus(snap, level.data.budget);
   status.textContent = text;
@@ -1061,13 +1063,6 @@ function init() {
     card: (index) => playTap(() => bridge.tap_card(index)),
     tile: (row, col) => playTap(() => bridge.tap_tile(row, col)),
     nothing: () => playTap(() => bridge.tap_nothing()),
-    hover: (index, row, col) => {
-      try {
-        return JSON.parse(bridge.hover(index, row, col));
-      } catch {
-        return null;
-      }
-    },
     render,
   });
 

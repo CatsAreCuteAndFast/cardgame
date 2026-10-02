@@ -77,11 +77,11 @@ function selectedCard(snap) {
 function playPrompt(snap) {
   if (snap.won || snap.game_over) return "";
   const card = selectedCard(snap);
-  if (!card) return "Tap a card, or drag it onto the board";
+  if (!card) return "Tap a card, or drag it out of your hand";
   const progress = snap.needed > 1 ? ` (${snap.picked.length}/${snap.needed})` : "";
   switch (card.kind) {
     case "fixed":
-      return "Tap the card again, or drag it onto the board, to play it";
+      return "Tap one of the highlighted tiles to play the card";
     case "from":
       return "Tap one of the highlighted tiles";
     case "any":
@@ -123,6 +123,9 @@ function showPreview(board, preview, blocked, effect) {
 }
 
 function renderSnapshot(snap, board, hand, { onTile, onCard }) {
+  const scroll = [window.scrollX, window.scrollY, hand.scrollLeft];
+  board.replaceChildren();
+  hand.replaceChildren();
   const has = (list, row, col) => list.some((coord) => sameCoord(coord, [row, col]));
   const card = selectedCard(snap);
   const pickingTiles = snap.targeting && card?.kind !== "card";
@@ -161,26 +164,31 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
         {
           class: classes.join(" "),
           dataset: { index },
-          textContent: card.label + (card.single_use ? "\n(single use)" : ""),
+          textContent: card.label,
           onclick: (e) => (e.stopPropagation(), onCard(index)),
         },
-        badge ? el("span", { class: "badge", textContent: badge }) : null,
+        [
+          card.single_use ? el("span", { class: "single-tag", textContent: "single use" }) : null,
+          badge ? el("span", { class: "badge", textContent: badge }) : null,
+        ],
       ),
     );
   });
+  window.scrollTo(scroll[0], scroll[1]);
+  hand.scrollLeft = scroll[2];
 }
 
-// drag a card onto the board (or onto a card, for retarget) and swipe between tiles;
-// every gesture ends as the same bridge calls that taps make
-// api: { snap(), card(i), tile(row, col), nothing(), hover(i, row, col), render() }
+// dragging a card out of the hand selects it (retarget: drop it on the card to change),
+// and swiping picks neighbouring tiles; every gesture ends as the same bridge calls that taps make
+// api: { snap(), card(i), tile(row, col), nothing(), render() }
 function attachPlayInput(board, hand, api) {
   const DRAG_START = 10;
   let press = null;
   let suppressClickUntil = 0;
 
   const under = (e, selector) => document.elementFromPoint(e.clientX, e.clientY)?.closest(selector) ?? null;
-  const overBoard = (e) => {
-    const rect = board.getBoundingClientRect();
+  const over = (node, e) => {
+    const rect = node.getBoundingClientRect();
     return e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
   };
   const clearDropTargets = () => {
@@ -209,21 +217,9 @@ function attachPlayInput(board, hand, api) {
     const snap = api.snap();
     const card = snap.hand[press.index];
     clearDropTargets();
-    if (card.kind === "card") {
-      const target = under(e, ".card[data-index]");
-      if (target && snap.candidate_cards.includes(Number(target.dataset.index))) target.classList.add("drop-target");
-      return;
-    }
-    const cell = under(e, ".cell[data-row]");
-    const key = cell ? cell.dataset.row + "," + cell.dataset.col : null;
-    if (card.kind === "fixed" && overBoard(e)) board.classList.add("drop-target");
-    if (cell && card.kind !== "fixed" && cell.classList.contains("targeting")) cell.classList.add("drop-target");
-    if (key === press.hoverKey) return;
-    press.hoverKey = key;
-    if (!cell) return showPreview(board, snap.preview, snap.blocked, card.effect);
-    const [row, col] = cellCoord(cell);
-    const hover = api.hover(press.index, row, col);
-    if (hover) showPreview(board, hover.preview, hover.blocked, card.effect);
+    if (card.kind !== "card") return;
+    const target = under(e, ".card[data-index]");
+    if (target && snap.candidate_cards.includes(Number(target.dataset.index))) target.classList.add("drop-target");
   }
 
   function cancelCardDrag() {
@@ -242,14 +238,8 @@ function attachPlayInput(board, hand, api) {
       api.render();
       return shake(hand.querySelector(`.card[data-index="${index}"]`));
     }
-    if (!overBoard(e)) return cancelCardDrag();
-    if (card.kind === "fixed") return api.card(press.index);
-    const cell = under(e, ".cell[data-row]");
-    if (!cell) return api.render();
-    const [row, col] = cellCoord(cell);
-    if (snap.candidate_tiles.some((coord) => sameCoord(coord, [row, col]))) return api.tile(row, col);
+    if (over(hand, e)) return cancelCardDrag();
     api.render();
-    shake(findCell(board, [row, col]));
   }
 
   function moveSwipe(e) {

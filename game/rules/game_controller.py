@@ -5,7 +5,7 @@ from game.rules.intents import Intent, ClickedTile, ClickedCard, ClickedNothing
 from game.rules.targets import TargetSpec, Fixed, ChooseAny, ChooseFrom, required_coords, ChooseCard, is_candidate, ChooseAdjacent
 from game.rules.effects import get_effect, can_modify, Flip, Retarget, Swap, can_target
 from game.rules.card import Card
-from game.rules.phases import Idle, Selected, Targeting, Phase, GameOver, Won
+from game.rules.phases import Idle, Targeting, Phase, GameOver, Won
 
 class GameController:
     def __init__(self, game_state: GameState) -> None:
@@ -17,7 +17,7 @@ class GameController:
         match self.phase:
             case Idle() | GameOver() | Won():
                 return None
-            case Selected(index=index) | Targeting(index=index):
+            case Targeting(index=index):
                 return self.game_state.hand[index]
             case _:
                 raise ValueError(f"unhandled phase {self.phase}")
@@ -43,24 +43,7 @@ class GameController:
         
     def _select(self, index: int) -> None:
         self._require_valid_index(index)
-        match self.game_state.hand[index].targets:
-            case Fixed():
-                self.phase = Selected(index)
-            case ChooseFrom() | ChooseAny() | ChooseAdjacent() | ChooseCard():
-                self.phase = Targeting(index)
-            case _: raise ValueError(f"unhandled target {self.game_state.hand[index].targets}")
-        
-    def _handle_selected(self, intent: Intent, phase: Selected) -> None:
-        match intent:
-            case ClickedNothing() | ClickedTile():
-                self.phase = Idle()
-            case ClickedCard(index=clicked_index):
-                if phase.index == clicked_index:
-                    self.phase = Targeting(phase.index)
-                    self._try_execute(self.phase)
-                else:
-                    self._select(clicked_index)
-            case _: raise ValueError(f"unhandled intent {intent}")
+        self.phase = Targeting(index)
         
     def _handle_targeting(self, intent: Intent, phase: Targeting) -> None:
         card = self.game_state.hand[phase.index]
@@ -153,8 +136,6 @@ class GameController:
                 return
             case Idle():
                 self._handle_idle(intent)
-            case Selected() as phase:
-                self._handle_selected(intent, phase)
             case Targeting() as phase:
                 self._handle_targeting(intent, phase)
             case _:

@@ -54,14 +54,6 @@ function tap(call) {
   render();
 }
 
-function hover(i, row, col) {
-  try {
-    return JSON.parse(bridge.hover(i, row, col));
-  } catch {
-    return null;
-  }
-}
-
 function render() {
   document.documentElement.style.setProperty("--top-h", `${document.querySelector(".top").offsetHeight}px`);
   for (const button of document.querySelectorAll(".tab")) button.classList.toggle("active", button.dataset.tab === tab);
@@ -104,8 +96,6 @@ function renderPlay() {
   const board = $("play-board");
   const hand = $("play-hand");
   const status = $("play-status");
-  board.replaceChildren();
-  hand.replaceChildren();
   $("play-empty").hidden = index !== null;
   if (index !== null && !snap && bridge && !playError) startLevel(index);
   $("play-error").hidden = !playError;
@@ -119,7 +109,11 @@ function renderPlay() {
   const { text, className } = snap ? playStatus(snap, pack[index].level.budget) : { text: "", className: "" };
   status.textContent = text;
   status.className = className;
-  if (!snap) return;
+  if (!snap) {
+    board.replaceChildren();
+    hand.replaceChildren();
+    return;
+  }
   renderSnapshot(snap, board, hand, {
     onTile: (row, col) => tap(() => bridge.tap_tile(row, col)),
     onCard: (i) => tap(() => bridge.tap_card(i)),
@@ -195,7 +189,6 @@ function init() {
     card: (i) => tap(() => bridge.tap_card(i)),
     tile: (row, col) => tap(() => bridge.tap_tile(row, col)),
     nothing: () => tap(() => bridge.tap_nothing()),
-    hover: (i, row, col) => hover(i, row, col),
     render,
   });
   window.addEventListener("resize", render);

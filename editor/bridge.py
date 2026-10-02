@@ -8,7 +8,7 @@ from game.rules.level_io import level_from_dict, target_from_dict, target_to_dic
 from game.rules.game_state import GameState
 from game.rules.game_controller import GameController
 from game.rules.intents import Intent, ClickedCard, ClickedTile, ClickedNothing
-from game.rules.view_state import build_view_state, hover_preview
+from game.rules.view_state import build_view_state
 
 _SAMPLE_TARGETS: dict[str, dict[str, Any]] = {
     "fixed": {"kind": "fixed", "coords": []},
@@ -95,12 +95,6 @@ def tap_nothing() -> str:
 
 def _coords(coords: tuple[Coord, ...]) -> list[list[int]]:
     return [[c.row, c.col] for c in coords]
-
-def hover(index: int, row: int, col: int) -> str:
-    if _controller is None:
-        raise ValueError("no game started")
-    preview, blocked = hover_preview(_controller.game_state, _controller.phase, index, Coord(row, col))
-    return json.dumps({"preview": _coords(preview), "blocked": _coords(blocked)})
 
 def snapshot() -> str:
     if _controller is None:
