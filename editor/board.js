@@ -77,7 +77,7 @@ function selectedCard(snap) {
 function playPrompt(snap) {
   if (snap.won || snap.game_over) return "";
   const card = selectedCard(snap);
-  if (!card) return "Tap a card, or drag it out of your hand";
+  if (!card) return "Tap a card, or drag it onto the board";
   const progress = snap.needed > 1 ? ` (${snap.picked.length}/${snap.needed})` : "";
   switch (card.kind) {
     case "fixed":
@@ -178,8 +178,9 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   hand.scrollLeft = scroll[2];
 }
 
-// dragging a card out of the hand selects it (retarget: drop it on the card to change),
-// and swiping picks neighbouring tiles; every gesture ends as the same bridge calls that taps make
+// a drag only acts on drop: a fixed card dropped on the board plays, other tile cards get selected,
+// and retarget is dropped on the card to change; swiping picks neighbouring tiles.
+// every gesture ends as the same bridge calls that taps make
 // api: { snap(), card(i), tile(row, col), nothing(), render() }
 function attachPlayInput(board, hand, api) {
   const DRAG_START = 10;
@@ -204,7 +205,6 @@ function attachPlayInput(board, hand, api) {
   }
 
   function startCardDrag() {
-    press.selectedByDrag = select(press.index);
     const card = api.snap()?.hand[press.index];
     if (!card) return (press = null);
     press.ghost = el("div", { class: "card drag-ghost" + (card.single_use ? " single" : ""), textContent: card.label });
@@ -217,14 +217,12 @@ function attachPlayInput(board, hand, api) {
     const snap = api.snap();
     const card = snap.hand[press.index];
     clearDropTargets();
-    if (card.kind !== "card") return;
+    if (card.kind !== "card") {
+      if (over(board, e)) board.classList.add("drop-target");
+      return;
+    }
     const target = under(e, ".card[data-index]");
-    if (target && snap.candidate_cards.includes(Number(target.dataset.index))) target.classList.add("drop-target");
-  }
-
-  function cancelCardDrag() {
-    if (press.selectedByDrag) api.nothing();
-    else api.render();
+    if (target && Number(target.dataset.index) !== press.index) target.classList.add("drop-target");
   }
 
   function endCardDrag(e) {
@@ -233,13 +231,17 @@ function attachPlayInput(board, hand, api) {
     if (card.kind === "card") {
       const target = under(e, ".card[data-index]");
       const index = target ? Number(target.dataset.index) : null;
-      if (index === null || index === press.index) return cancelCardDrag();
-      if (snap.candidate_cards.includes(index)) return api.card(index);
-      api.render();
+      if (index === null || index === press.index) return api.render();
+      select(press.index);
+      if (api.snap()?.candidate_cards.includes(index)) return api.card(index);
+      api.nothing();
       return shake(hand.querySelector(`.card[data-index="${index}"]`));
     }
-    if (over(hand, e)) return cancelCardDrag();
-    api.render();
+    if (!over(board, e)) return api.render();
+    select(press.index);
+    if (card.kind !== "fixed") return;
+    const [target] = api.snap()?.candidate_tiles ?? [];
+    if (target) api.tile(...target);
   }
 
   function moveSwipe(e) {
@@ -265,7 +267,7 @@ function attachPlayInput(board, hand, api) {
     clearDropTargets();
     suppressClickUntil = performance.now() + 50;
     try {
-      if (cancelled) press.kind === "card" ? cancelCardDrag() : api.render();
+      if (cancelled) api.render();
       else if (press.kind === "card") endCardDrag(e);
       else endSwipe(e);
     } finally {
