@@ -4,11 +4,11 @@ from game.core.coord import Coord
 from game.core.tiletype import get_tile_type, tile_type_ids
 from game.core.substratetype import get_substrate_type, substrate_type_ids
 from game.rules.effects import get_effect, effect_ids, accepts
-from game.rules.level_io import level_from_dict, target_from_dict, TARGET_KINDS
+from game.rules.level_io import level_from_dict, target_from_dict, target_to_dict, TARGET_KINDS
 from game.rules.game_state import GameState
 from game.rules.game_controller import GameController
 from game.rules.intents import Intent, ClickedCard, ClickedTile, ClickedNothing
-from game.rules.view_state import build_view_state
+from game.rules.view_state import build_view_state, hover_preview
 
 _SAMPLE_TARGETS: dict[str, dict[str, Any]] = {
     "fixed": {"kind": "fixed", "coords": []},
@@ -93,6 +93,15 @@ def tap_card(index: int) -> str:
 def tap_nothing() -> str:
     return _handle(ClickedNothing())
 
+def _coords(coords: tuple[Coord, ...]) -> list[list[int]]:
+    return [[c.row, c.col] for c in coords]
+
+def hover(index: int, row: int, col: int) -> str:
+    if _controller is None:
+        raise ValueError("no game started")
+    preview, blocked = hover_preview(_controller.game_state, _controller.phase, index, Coord(row, col))
+    return json.dumps({"preview": _coords(preview), "blocked": _coords(blocked)})
+
 def snapshot() -> str:
     if _controller is None:
         raise ValueError("no game started")
@@ -114,10 +123,16 @@ def snapshot() -> str:
         "width": board.width,
         "height": board.height,
         "cells": cells,
-        "hand": [{"label": card.label, "single_use": card.single_use} for card in state.hand],
+        "hand": [
+            {"label": card.label, "single_use": card.single_use, "effect": card.effect_id, "kind": target_to_dict(card.targets)["kind"]}
+            for card in state.hand
+        ],
         "plays": view.plays_remaining,
-        "picked": [[c.row, c.col] for c in view.picked],
-        "candidate_tiles": [[c.row, c.col] for c in view.candidate_tiles],
+        "picked": _coords(view.picked),
+        "candidate_tiles": _coords(view.candidate_tiles),
+        "preview": _coords(view.preview),
+        "blocked": _coords(view.blocked),
+        "needed": view.needed,
         "candidate_cards": list(view.candidate_cards),
         "selected": view.selected,
         "targeting": view.is_targeting,

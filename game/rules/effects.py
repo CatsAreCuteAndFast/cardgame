@@ -93,3 +93,25 @@ def can_target(effect: Effect, board: Board, coord: Coord) -> bool:
             return board.get_tile(coord).type.can_swap
         case _:
             raise ValueError(f"unhandled effect {effect}")
+
+def affected(effect: Effect, board: Board, coords: tuple[Coord, ...]) -> tuple[Coord, ...]:
+    match effect:
+        case Flip():
+            return tuple(sorted(effect._expand(board, coords), key=lambda c: (c.row, c.col)))
+        case Swap():
+            if len(coords) == 2 and all(board.get_tile(c).type.can_swap for c in coords):
+                return coords
+            return ()
+        case Retarget():
+            return ()
+        case _:
+            raise ValueError(f"unhandled effect {effect}")
+
+def blocked(effect: Effect, board: Board, coords: tuple[Coord, ...]) -> tuple[Coord, ...]:
+    match effect:
+        case Flip():
+            return tuple(c for c in coords if not _flip_allowed(board, c))
+        case Swap() | Retarget():
+            return ()
+        case _:
+            raise ValueError(f"unhandled effect {effect}")
