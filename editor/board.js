@@ -34,11 +34,15 @@ export function setBoardShape(board, width, height) {
   board.style.setProperty("--rows", height);
 }
 
-// how long a flip runs in ms: the press-and-light and the bob after it, from the CSS variables in editor.css
+// how long a flip runs in ms: the longest part (press, light, glow, bob) of flipping or unflipping, from the CSS variables in editor.css
 export function flipDuration() {
   const style = getComputedStyle(document.documentElement);
   const ms = (name) => parseFloat(style.getPropertyValue(name)) || 0;
-  return Math.max(ms("--flip-ms"), ms("--bob-start") + ms("--bob-ms"));
+  const ends = [];
+  for (const part of ["press", "light", "glow", "bob"]) {
+    for (const off of ["", "-off"]) ends.push(ms(`--${part}-start${off}`) + ms(`--${part}-ms${off}`));
+  }
+  return Math.max(...ends);
 }
 
 // anim: { on, elapsed, total } plays the press-and-light (or reverse) animation, already elapsed ms in.

@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: the flip animation's parts are now separately tunable, as Drifl asked (the bob started at the same time on flip and unflip, and the light's spread is what matters most). Press, light (with the base's orange edge), glow and bob are each a plain from/to animation with their own start, length and easing variables, for flipping and for unflipping (`-off`); the defaults reproduce the old timing. The tuning sliders now sit directly under the hand on the tester page and in the editor's Play tab, instead of in a panel behind an "Anim" header button, and the sample tile is gone.
+
 - **2026-10-04**: the temporary "Anim" tuning panel is now in the editor's header too (it loads `play/tune.js` and `play/tune.css`), since Drifl looked for it in the editor's Play tab.
 
 - **2026-10-04**: the tile flip now ends with a small bob, as Drifl asked, and its timings are CSS variables on `:root` (`--flip-ms`, `--press`, `--bob-start`, `--bob-ms`, `--bob-amp`, `--bob-amp-off`, `--bob-damp`, `--bob-name`). The bob is a separate animation on the face's `translate` property, so it stacks on the press without changing those keyframes, and stays transform-only. `board.js` reads the total length from the variables (`flipDuration()`, replacing the fixed `FLIP_MS`). Added a temporary "Anim" panel to the tester page (`play/tune.js`, `play/tune.css`) with sliders for these variables and a sample tile, so Drifl can tune the look on a phone; it's to be removed once the values are chosen.
