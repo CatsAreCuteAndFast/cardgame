@@ -67,20 +67,20 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
 }
 
 // per board: last flipped state and when each tile last changed, so a flip animates across re-renders.
-// only a one-play step (a play, undo or redo) animates; loading, reset or another level just shows the result
+// only a one-play step (a play, undo or redo) in the same game animates; a new game (loading, reset, another level) just shows the result
 const flipHistory = new WeakMap();
 
 function flipAnimations(board, snap) {
   const now = performance.now();
   const prev = flipHistory.get(board);
-  const step = prev && prev.width === snap.width && prev.height === snap.height;
+  const step = prev && prev.game === snap.game_id;
   const animate = step && Math.abs(prev.plays - snap.plays) === 1;
   const changedAt = snap.cells.map((cell, i) => {
     if (!step) return -Infinity;
     if (cell.flipped === prev.flipped[i]) return prev.changedAt[i];
     return animate ? now : -Infinity;
   });
-  flipHistory.set(board, { width: snap.width, height: snap.height, plays: snap.plays, flipped: snap.cells.map((cell) => cell.flipped), changedAt });
+  flipHistory.set(board, { game: snap.game_id, plays: snap.plays, flipped: snap.cells.map((cell) => cell.flipped), changedAt });
   return snap.cells.map((cell, i) => (now - changedAt[i] < FLIP_MS ? { on: cell.flipped, elapsed: now - changedAt[i] } : null));
 }
 

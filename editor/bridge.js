@@ -16,6 +16,8 @@ const SAMPLE_TARGETS = { fixed: { kind: "fixed", coords: [] }, from: { kind: "fr
 let history = [];
 let redoStack = [];
 let game = null;
+// counts start() calls, so the page can tell a new game from a step in the same one
+let gameId = 0;
 
 export function catalog() {
   return {
@@ -37,6 +39,7 @@ export function validate(level) {
 
 export function start(level) {
   game = startGame(parseLevel(level));
+  gameId++;
   history = [game];
   redoStack = [];
   return snapshot();
@@ -113,6 +116,7 @@ export function snapshot() {
   const targetingCard = phase.kind === "targeting";
   const sel = targetingCard ? selection(state, phase.index, phase.picks) : null;
   return {
+    game_id: gameId,
     width: level.width,
     height: level.height,
     cells: state.tiles.map((tile, cell) => ({

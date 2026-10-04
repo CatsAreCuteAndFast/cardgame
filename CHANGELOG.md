@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: Reset no longer animates the tiles back after exactly one play, and neither does restarting the editor's Play tab after an edit or switching to a same-size level whose plays left differ by one. `flipAnimations` treated any one-play difference as a step. The bridge snapshot now has `game_id` (bumped by every `start()`), and only steps within the same game animate.
+
 - **2026-10-04**: the Reload button works again when the page fails to load. Since the switch to ES modules, one module that failed to load or link (a bad deploy, or a stale cached file mixed with a new one) stopped the whole page, including the Reload button that lived in `board.js`, leaving "Loading…" up for good. `hardReload` moved to `editor/reload.js`, a plain script both pages load before their modules, and it replaces a stuck "Loading…" banner with "Couldn't load the game. Press ↻ Reload." Also deleted the leftover ignored `__pycache__` folders from the removed Python code.
 
 - **2026-10-04** (#6 of the setup changes, part 2): moved the Changelog and History out of `CLAUDE.md` into this file, so `CLAUDE.md` only describes the project as it is now and stays short in every session's context. Entries are now written in the same commit as the change and no longer carry a hash (git knows it), which ends the separate "record <hash> in the changelog" commits; commits made without Claude are found with `git log` since the last commit that touched this file. Older entries keep their hashes.

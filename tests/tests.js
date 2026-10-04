@@ -143,6 +143,11 @@ async function testBridgeUndo() {
   snap = bridge.redo();
   assert(snap.plays === 999 && snap.cells[6].flipped, "redo restores the play");
   assert(same(bridge.solution(), [{ card: 0, tiles: [[2, 2]] }]), "the bridge lists the moves played");
+  const id = snap.game_id;
+  assert(bridge.undo().game_id === id && bridge.start(await fetchJson("../levels/demo.json")).game_id === id + 1, "only start() begins a new game");
+  bridge.start(await fetchJson("../levels/demo.json"));
+  bridge.tapCard(0);
+  bridge.tapTile(2, 2);
   const demo = await fetchJson("../levels/demo.json");
   assert(bridge.checkSolution(demo, bridge.solution()).error.includes("don't win"), "a solution must win");
   assert(bridge.checkSolution(demo, [{ card: 0, tiles: [[0, 0]] }]).error.includes("can't pick"), "a fixed card can't pick a tile it doesn't list");
