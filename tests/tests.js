@@ -58,6 +58,8 @@ async function testPack() {
     } catch (error) {
       throw new Error(`pack level ${entry.name} is invalid: ${error.message}`);
     }
+    const check = bridge.checkSolution(entry.level, entry.solution);
+    assert(!check.error, `pack level ${entry.name}: ${entry.solution ? check.error : "no solution saved; win it in the editor's Play tab, Save solution, and copy the folder again"}`);
   }
 }
 
@@ -140,6 +142,11 @@ async function testBridgeUndo() {
   assert(snap.plays === 1000 && snap.selected === null && snap.can_redo, "undo drops the selection and the play");
   snap = bridge.redo();
   assert(snap.plays === 999 && snap.cells[6].flipped, "redo restores the play");
+  assert(same(bridge.solution(), [{ card: 0, tiles: [[2, 2]] }]), "the bridge lists the moves played");
+  const demo = await fetchJson("../levels/demo.json");
+  assert(bridge.checkSolution(demo, bridge.solution()).error.includes("don't win"), "a solution must win");
+  assert(bridge.checkSolution(demo, [{ card: 0, tiles: [[0, 0]] }]).error.includes("can't pick"), "a fixed card can't pick a tile it doesn't list");
+  assert(bridge.checkSolution(demo, [{ card: 9, tiles: [] }]).error.includes("no card 10"), "a missing card is reported from 1");
 }
 
 export const TESTS = { testLevels, testPack, testMovesMatchPreview, testCardPlay, testBridgeUndo };

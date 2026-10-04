@@ -2,7 +2,7 @@
 // A move is {card, cells} for a tile card (cells are the picks) or {card, target} for a card
 // that changes another card.
 
-import { SUBSTRATE_TYPES } from "./types.js";
+import { SUBSTRATE_TYPES, toCell, toCoord } from "./types.js";
 import { TARGETS, isCandidate } from "./targets.js";
 import { EFFECTS, canModify } from "./effects.js";
 
@@ -70,6 +70,59 @@ export function legalMoves(state) {
     extend([]);
   });
   return moves;
+}
+
+// a move as stored in a solution: {card, tiles: [[row, col], ...]} or {card, target} (card indices count from 0)
+export function moveToJson(level, move) {
+  return "target" in move ? { card: move.card, target: move.target } : { card: move.card, tiles: move.cells.map((cell) => toCoord(level.width, cell)) };
+}
+
+function moveFromJson(level, data) {
+  if (!Number.isInteger(data?.card)) throw new Error("a move needs a card index");
+  if ("target" in data) return { card: data.card, target: data.target };
+  if (!Array.isArray(data.tiles)) throw new Error("a move needs tiles or a target");
+  const cells = data.tiles.map((coord) => {
+    const [row, col] = Array.isArray(coord) ? coord : [];
+    if (!(Number.isInteger(row) && Number.isInteger(col) && row >= 0 && row < level.height && col >= 0 && col < level.width)) {
+      throw new Error(`bad tile ${JSON.stringify(coord)}`);
+    }
+    return toCell(level.width, [row, col]);
+  });
+  return { card: data.card, cells };
+}
+
+// throws unless the move could be made by tapping in this state
+function checkMove(state, move) {
+  const card = state.hand[move.card];
+  if (!card) throw new Error(`there is no card ${move.card + 1} in the hand`);
+  if (!canPlay(state)) throw new Error("no plays left");
+  if (!EFFECTS[card.effect].onTiles) {
+    const other = state.hand[move.target];
+    if (!other || !canModify(card.effect, other.target)) throw new Error(`card ${move.card + 1} can't change card ${move.target + 1}`);
+    return;
+  }
+  const needed = TARGETS[card.target.kind].needs(card.target);
+  if (move.cells?.length !== needed) throw new Error(`card ${move.card + 1} needs ${needed} tile(s)`);
+  move.cells.forEach((cell, index) => {
+    if (!canPick(state, move.card, move.cells.slice(0, index), cell)) {
+      throw new Error(`card ${move.card + 1} can't pick (${toCoord(state.level.width, cell).join(",")})`);
+    }
+  });
+}
+
+// replays stored moves from the start of the level; throws naming the first move that can't be made
+export function playMoves(level, moves) {
+  let state = newState(level);
+  moves.forEach((data, index) => {
+    try {
+      const move = moveFromJson(level, data);
+      checkMove(state, move);
+      state = applyMove(state, move);
+    } catch (error) {
+      throw new Error(`move ${index + 1}: ${error.message}`);
+    }
+  });
+  return state;
 }
 
 // identifies a position for searching (the plays left are not part of it)

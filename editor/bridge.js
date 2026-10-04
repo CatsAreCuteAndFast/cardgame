@@ -6,6 +6,7 @@ import { TARGETS } from "../game/targets.js";
 import { EFFECTS } from "../game/effects.js";
 import { parseLevel, upgradeLevel, LEVEL_VERSION } from "../game/level.js";
 import { startGame, handle, selection } from "../game/controller.js";
+import { playMoves, moveToJson, isWon } from "../game/state.js";
 
 export { upgradeLevel };
 
@@ -73,6 +74,24 @@ export function redo() {
   if (redoStack.length) history.push(redoStack.pop());
   game = history.at(-1);
   return snapshot();
+}
+
+// the moves played so far, in the form levels store as their solution
+export function solution() {
+  requireGame();
+  return history.slice(1).map((entry) => moveToJson(entry.state.level, entry.move));
+}
+
+// {plays} when the moves win the level, otherwise {error}
+export function checkSolution(level, moves) {
+  try {
+    if (!Array.isArray(moves)) throw new Error("a solution is a list of moves");
+    const state = playMoves(parseLevel(level), moves);
+    if (!isWon(state)) throw new Error(`the ${moves.length} move(s) don't win the level`);
+    return { plays: moves.length };
+  } catch (error) {
+    return { error: error.message };
+  }
 }
 
 const coords = (cells) => cells.map((cell) => toCoord(game.state.level.width, cell));

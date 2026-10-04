@@ -1,4 +1,5 @@
-// Turns taps into moves. A game is {state, phase}; handle() returns a new game.
+// Turns taps into moves. A game is {state, phase, move}; handle() returns a new game.
+// move is the last move played, set on the game a play produces.
 // Phases: idle, targeting (a selected card and its picks so far), won, over.
 // Intents: {tap: "card", index}, {tap: "tile", cell}, {tap: "nothing"}.
 
@@ -15,7 +16,7 @@ const targeting = (index, picks = []) => ({ kind: "targeting", index, picks });
 function play(state, move) {
   const next = applyMove(state, move);
   const phase = isWon(next) ? { kind: "won" } : canPlay(next) ? IDLE : { kind: "over" };
-  return { state: next, phase };
+  return { state: next, phase, move };
 }
 
 function handleCardTarget(game, phase, intent) {

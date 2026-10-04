@@ -603,7 +603,7 @@ function copyLevels(items, title) {
   if (!items.length) return toast("No levels to copy");
   const entries = items.map((level) => {
     const folder = folderById(level.folder);
-    return folder ? { name: level.name, folder: folder.name, level: level.data } : { name: level.name, level: level.data };
+    return { name: level.name, ...(folder ? { folder: folder.name } : {}), level: level.data, ...(level.solution ? { solution: level.solution } : {}) };
   });
   copyText(JSON.stringify(entries), title);
 }
@@ -708,8 +708,34 @@ function renderEdit() {
   const validation = $("validation");
   validation.className = "validation " + (bridge ? (error ? "bad" : "good") : "");
   validation.textContent = !bridge ? "Rules are loading… validation will appear here." : error ? error : "Valid level";
+  renderSolution(level, error);
 
   renderCards(data, width, height);
+}
+
+// solutions are stored on the level record (not in its data) and checked against the level as it is now
+function renderSolution(level, error) {
+  const box = $("solution");
+  box.hidden = !bridge || !!error;
+  if (box.hidden) return;
+  if (!level.solution) {
+    box.className = "validation";
+    box.textContent = "No solution saved. Win the level in Play and press Save solution.";
+    return;
+  }
+  const check = bridge.checkSolution(level.data, level.solution);
+  box.className = "validation " + (check.error ? "bad" : "good");
+  box.textContent = check.error ? `The saved solution no longer works (${check.error}). Win the level in Play to save a new one.` : `Saved solution wins in ${check.plays} play${check.plays === 1 ? "" : "s"}`;
+}
+
+function saveSolution() {
+  const level = current();
+  if (!level || !playSnapshot?.won) return;
+  level.solution = bridge.solution();
+  level.updated = Date.now();
+  saveLevels();
+  toast(`Solution saved (${level.solution.length} play${level.solution.length === 1 ? "" : "s"})`);
+  render();
 }
 
 function renderPalette(data) {
@@ -902,6 +928,7 @@ function renderPlay() {
   $("play-undo").disabled = !snap?.can_undo;
   $("play-redo").disabled = !snap?.can_redo;
   $("play-cancel").hidden = !(snap && snap.selected !== null);
+  $("play-save-solution").hidden = !snap?.won;
   $("play-prompt").textContent = snap ? playPrompt(snap) : "";
   if (!snap) {
     board.replaceChildren();
@@ -962,8 +989,10 @@ function importText(text) {
     if (Array.isArray(parsed)) {
       for (const entry of parsed) {
         const folder = entry.folder ? folderByName(String(entry.folder)) : null;
-        addLevel(String(entry.name ?? "Imported"), normalizeLevel(entry.level), folder?.id ?? null);
+        const level = addLevel(String(entry.name ?? "Imported"), normalizeLevel(entry.level), folder?.id ?? null);
+        if (Array.isArray(entry.solution)) level.solution = entry.solution;
       }
+      saveLevels();
       toast(`Imported ${parsed.length} level${parsed.length === 1 ? "" : "s"}`);
     } else {
       const data = normalizeLevel(parsed);
@@ -1063,6 +1092,10 @@ function init() {
   $("play-redo").addEventListener("click", (e) => {
     e.stopPropagation();
     playTap(() => bridge.redo());
+  });
+  $("play-save-solution").addEventListener("click", (e) => {
+    e.stopPropagation();
+    saveSolution();
   });
   $("play-cancel").addEventListener("click", (e) => {
     e.stopPropagation();
