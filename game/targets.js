@@ -19,6 +19,7 @@ function parseCount(data, what) {
 }
 
 function checkCoords(coords, width, height, what) {
+  if (coords.length === 0) throw new Error(`${what} has no tiles to pick`);
   for (const [row, col] of coords) {
     if (!(row >= 0 && row < height && col >= 0 && col < width)) {
       throw new Error(`${what} targets (${row},${col}), outside the ${width}x${height} board`);
@@ -85,7 +86,7 @@ export const TARGETS = {
 
 export function parseTarget(data, what) {
   if (typeof data !== "object" || data === null) throw new Error(`${what} has no target`);
-  const kind = TARGETS[data.kind];
+  const kind = Object.hasOwn(TARGETS, data.kind) ? TARGETS[data.kind] : null;
   if (!kind) throw new Error(`${what} has unknown target kind ${JSON.stringify(data.kind)}`);
   return kind.parse(data, what);
 }

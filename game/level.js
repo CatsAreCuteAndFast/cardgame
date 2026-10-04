@@ -29,8 +29,9 @@ function grid(data, what, registry, width) {
   });
 }
 
-function coord(data, width, height, what) {
-  if (!Array.isArray(data) || data.length < 2 || !data.slice(0, 2).every(Number.isInteger)) {
+// size is 2 for [row, col] and 3 for a counter's [row, col, n]
+function coord(data, width, height, what, size = 2) {
+  if (!Array.isArray(data) || data.length !== size || !data.slice(0, 2).every(Number.isInteger)) {
     throw new Error(`${what} has a bad coord ${JSON.stringify(data)}`);
   }
   const [row, col] = data;
@@ -39,7 +40,7 @@ function coord(data, width, height, what) {
 }
 
 function card(data, index, width, height) {
-  const what = `card ${index}`;
+  const what = `card ${index + 1}`;
   if (typeof data !== "object" || data === null) throw new Error(`${what} is not an object`);
   if (!has(EFFECTS, data.effect)) throw new Error(`${what} has unknown effect ${JSON.stringify(data.effect)}`);
   const target = parseTarget(data.target, what);
@@ -69,7 +70,7 @@ export function upgradeLevel(data) {
 
 export function parseLevel(raw) {
   const data = upgradeLevel(raw);
-  if (!Number.isInteger(data.budget)) throw new Error("budget should be a whole number");
+  if (!Number.isInteger(data.budget) || data.budget < 1) throw new Error("budget should be a whole number of at least 1");
   const tiles = grid(data.tiles, "tiles", TILE_TYPES);
   const width = data.tiles[0].length;
   const height = data.tiles.length;
@@ -96,7 +97,7 @@ export function parseLevel(raw) {
   const counters = substrates.map((id) => SUBSTRATE_TYPES[id].period);
   const seen = new Set();
   for (const entry of list(data.counters ?? [], "counters")) {
-    const cell = coord(entry, width, height, "substrate counter");
+    const cell = coord(entry, width, height, "substrate counter", 3);
     if (seen.has(cell)) throw new Error(`substrate counter for ${fmt(entry)} is listed more than once`);
     seen.add(cell);
     const period = SUBSTRATE_TYPES[substrates[cell]].period;

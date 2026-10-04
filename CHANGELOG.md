@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: stricter level and solution checks. `parseLevel` now rejects a budget below 1, coords with extra numbers (`[0, 0, 7]` in links or flipped, 4-number counters; the Python rules rejected these too), target kinds that are inherited object keys such as `"toString"` (they gave "kind.parse is not a function"), and `fixed` or `from` cards with no tiles, which can never be played (this resolves the known issue about empty fixed cards). Its messages number cards from 1, like the editor. `playMoves` rejects moves after the level is won, which the game doesn't allow, and a retarget move whose target isn't a whole number.
+
 - **2026-10-04**: Reset no longer animates the tiles back after exactly one play, and neither does restarting the editor's Play tab after an edit or switching to a same-size level whose plays left differ by one. `flipAnimations` treated any one-play difference as a step. The bridge snapshot now has `game_id` (bumped by every `start()`), and only steps within the same game animate.
 
 - **2026-10-04**: removed the dark circle behind a timed substrate's counter number, which Drifl thought didn't look nice; the number keeps a soft text shadow so it stays readable on the orange lit face.

@@ -79,7 +79,10 @@ export function moveToJson(level, move) {
 
 function moveFromJson(level, data) {
   if (!Number.isInteger(data?.card)) throw new Error("a move needs a card index");
-  if ("target" in data) return { card: data.card, target: data.target };
+  if ("target" in data) {
+    if (!Number.isInteger(data.target)) throw new Error("a move's target should be a card index");
+    return { card: data.card, target: data.target };
+  }
   if (!Array.isArray(data.tiles)) throw new Error("a move needs tiles or a target");
   const cells = data.tiles.map((coord) => {
     const [row, col] = Array.isArray(coord) ? coord : [];
@@ -115,6 +118,7 @@ export function playMoves(level, moves) {
   let state = newState(level);
   moves.forEach((data, index) => {
     try {
+      if (isWon(state)) throw new Error("the level is already won, so no more moves can be made");
       const move = moveFromJson(level, data);
       checkMove(state, move);
       state = applyMove(state, move);

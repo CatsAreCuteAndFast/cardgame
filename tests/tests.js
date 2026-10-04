@@ -39,6 +39,13 @@ async function testLevels() {
   }
   rejects({ ...demo, flipped: [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]] }, "an already solved level should be rejected");
   rejects({ ...demo, cards: [{ effect: "swap", target: { kind: "any", count: 2 } }] }, "swap only takes adjacent 2");
+  rejects({ ...demo, budget: 0 }, "a budget below 1 should be rejected");
+  rejects({ ...demo, flipped: [[0, 0, 7]] }, "a flipped coord with an extra number should be rejected");
+  rejects({ ...demo, links: [[[0, 1, 0], [2, 0]]] }, "a link coord with an extra number should be rejected");
+  rejects({ ...demo, counters: [[1, 1, 0, 0]] }, "a counter with an extra number should be rejected");
+  rejects({ ...demo, cards: [{ effect: "flip", target: { kind: "toString" } }] }, "inherited object keys aren't target kinds");
+  rejects({ ...demo, cards: [{ effect: "flip", target: { kind: "from", coords: [] } }] }, "a choose-from card needs tiles");
+  rejects({ ...demo, cards: [{ effect: "flip", target: { kind: "fixed", coords: [] } }] }, "a fixed card needs tiles");
 
   const { version, ...unversioned } = demo;
   assert(version === LEVEL_VERSION, "levels/demo.json should be at the current level version");
@@ -152,6 +159,11 @@ async function testBridgeUndo() {
   assert(bridge.checkSolution(demo, bridge.solution()).error.includes("don't win"), "a solution must win");
   assert(bridge.checkSolution(demo, [{ card: 0, tiles: [[0, 0]] }]).error.includes("can't pick"), "a fixed card can't pick a tile it doesn't list");
   assert(bridge.checkSolution(demo, [{ card: 9, tiles: [] }]).error.includes("no card 10"), "a missing card is reported from 1");
+  const two = { budget: 3, tiles: [["basic", "basic"]], substrates: [["plain", "plain"]], cards: [{ effect: "flip", target: { kind: "fixed", coords: [[0, 0], [0, 1]] } }, { effect: "swap", target: { kind: "adjacent", count: 2 } }] };
+  assert(bridge.checkSolution(two, [{ card: 0, tiles: [[0, 0]] }]).plays === 1, "a one-move solution");
+  assert(bridge.checkSolution(two, [{ card: 0, tiles: [[0, 0]] }, { card: 1, tiles: [[0, 0], [0, 1]] }]).error.includes("already won"), "no moves after the win");
+  const retarget = { budget: 2, tiles: [["basic"]], substrates: [["plain"]], cards: [{ effect: "flip", target: { kind: "fixed", coords: [[0, 0]] } }, { effect: "retarget", target: { kind: "card" } }] };
+  assert(bridge.checkSolution(retarget, [{ card: 1, target: "0" }, { card: 2, tiles: [[0, 0]] }]).error.includes("card index"), "a target must be a number");
 }
 
 export const TESTS = { testLevels, testPack, testMovesMatchPreview, testCardPlay, testBridgeUndo };
