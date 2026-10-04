@@ -126,7 +126,7 @@ Clicking empty space cancels back to `Idle`. Invalid tile picks are ignored.
 
 Newest first. Each entry gives the date, the commit (if committed) and what changed.
 
-- **2026-10-04** (uncommitted): the cards no longer have text below the header (removed `targetPhrase` and `.card-text`). Flip cards now have two headers: "Flip all" for Fixed (#963028) and "Flip one" for ChooseFrom (#c8602a). `EFFECT_FACES`/`effectFace` became `CARD_FACES`/`cardFace(effect, kind)`. The mini-map is larger (up to 70px wide on a square board). Drifl doesn't plan to use flip with `any`, so it just gets a plain "Flip" header.
+- **2026-10-04** (6a58fd9): the cards no longer have text below the header (removed `targetPhrase` and `.card-text`). Flip cards now have two headers: "Flip all" for Fixed (#963028) and "Flip one" for ChooseFrom (#c8602a). `EFFECT_FACES`/`effectFace` became `CARD_FACES`/`cardFace(effect, kind)`. The mini-map is larger (up to 70px wide on a square board). Drifl doesn't plan to use flip with `any`, so it just gets a plain "Flip" header.
 
 - **2026-10-04** (c2bf7fb): clearer cards on the web, the first step of a UI pass Drifl asked for. New card face in `board.js` (`renderCard`, `cardArt`, `targetPhrase`, `EFFECT_FACES`): effect-coloured header with icon, a mini-map of the tiles the card acts on, a plain-language target phrase, a dashed frame for single use (replaces the purple background and "single use" text) and a "copy" tag for cards made by retarget. Holding a card shows its preview (long press). The bridge snapshot's hand entries gained `target` and `copy`. The pick badge moved below the card header. Still to fine-tune with Drifl.
 
