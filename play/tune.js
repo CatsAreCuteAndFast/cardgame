@@ -66,22 +66,36 @@ function save() {
   } catch {}
 }
 
+// one row per variable: its control and a button that puts back its default
 function control(setting) {
   const name = el("span", { textContent: setting.label + (setting.unit ? ` (${setting.unit})` : "") });
+  const reset = el("button", { class: "small tune-reset", textContent: "↺", title: "Reset to default" });
+  const set = (value) => {
+    apply(setting, value);
+    save();
+  };
   if (setting.ease) {
     const options = EASES.some(([, css]) => css === values[setting.name]) ? EASES : [...EASES, [values[setting.name], values[setting.name]]];
     const select = el("select", {}, options.map(([label, css]) => el("option", { value: css, textContent: label, selected: css === values[setting.name] })));
-    select.addEventListener("change", () => (apply(setting, select.value), save()));
-    return el("label", { class: "tune-row" }, [name, select]);
+    select.addEventListener("change", () => set(select.value));
+    reset.addEventListener("click", () => {
+      set(defaults[setting.name]);
+      select.value = defaults[setting.name];
+    });
+    return el("div", { class: "tune-row ease" }, [name, select, reset]);
   }
   const output = el("output", { textContent: values[setting.name] });
   const input = el("input", { type: "range", min: setting.min, max: setting.max, step: setting.step, value: values[setting.name] });
   input.addEventListener("input", () => {
-    apply(setting, Number(input.value));
+    set(Number(input.value));
     output.textContent = input.value;
-    save();
   });
-  return el("label", { class: "tune-row" }, [name, input, output]);
+  reset.addEventListener("click", () => {
+    set(defaults[setting.name]);
+    input.value = defaults[setting.name];
+    output.textContent = defaults[setting.name];
+  });
+  return el("div", { class: "tune-row" }, [name, input, output, reset]);
 }
 
 function build() {

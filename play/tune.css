@@ -3,8 +3,9 @@
 .screen:not(.active) + #tune { display: none; }
 #tune fieldset { margin: 0 0 10px; padding: 6px 10px 8px; border: 1px solid #2c3039; border-radius: 10px; background: var(--panel); }
 #tune legend { padding: 0 4px; font-weight: 600; }
-.tune-row { display: grid; grid-template-columns: 9.5em 1fr 3.2em; align-items: center; gap: 8px; min-height: 32px; }
+.tune-row { display: grid; grid-template-columns: 9.5em 1fr 3.2em auto; align-items: center; gap: 8px; min-height: 32px; }
 .tune-row input { width: 100%; min-height: 0; }
-.tune-row select { grid-column: 2 / span 2; min-height: 30px; }
+.tune-row select { grid-column: 2 / span 2; min-height: 30px; min-width: 0; }
+.tune-reset { min-height: 30px; padding: 0 8px; }
 .tune-row output { text-align: right; font-variant-numeric: tabular-nums; }
 .tune-buttons { display: flex; gap: 8px; }

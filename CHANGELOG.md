@@ -2,6 +2,10 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: each animation slider and easing choice under the hand now has its own ↺ button on the right that resets just that value to its default, as Drifl asked.
+
+- **2026-10-04**: the flip animation now uses the values Drifl chose with the sliders: on flip the light starts at 70ms and spreads over 350ms with an ease-in curve (it used to start at 161ms and spread over 539ms, easing out), and the bob starts at 170ms, lasts 580ms and is lower (1.5cqh); on unflip the light shrinks over 450ms, the release starts at 180ms, and the bob starts at 350ms, lasts 350ms and is 1cqh high.
+
 - **2026-10-04**: the flip animation's parts are now separately tunable, as Drifl asked (the bob started at the same time on flip and unflip, and the light's spread is what matters most). Press, light (with the base's orange edge), glow and bob are each a plain from/to animation with their own start, length and easing variables, for flipping and for unflipping (`-off`); the defaults reproduce the old timing. The tuning sliders now sit directly under the hand on the tester page and in the editor's Play tab, instead of in a panel behind an "Anim" header button, and the sample tile is gone.
 
 - **2026-10-04**: the temporary "Anim" tuning panel is now in the editor's header too (it loads `play/tune.js` and `play/tune.css`), since Drifl looked for it in the editor's Play tab.
