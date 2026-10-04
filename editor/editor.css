@@ -198,15 +198,15 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 :root {
   --press: 8.333%;
   --press-start: 0ms;
-  --press-ms: 217ms;
-  --press-ease: cubic-bezier(.3, 0, .2, 1);
+  --press-ms: 220ms;
+  --press-ease: cubic-bezier(.3, 0, .2, 1.3);
   --light-start: 70ms;
   --light-ms: 350ms;
   --light-ease: cubic-bezier(.32, 0, .67, 0);
-  --glow-start: 315ms;
+  --glow-start: 160ms;
   --glow-ms: 245ms;
-  --bob-start: 170ms;
-  --bob-ms: 580ms;
+  --bob-start: 220ms;
+  --bob-ms: 480ms;
   --bob-amp: 1.5cqh;
   --press-start-off: 180ms;
   --press-ms-off: 280ms;

@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: new flip timing from Drifl's tuning: the press takes 220ms and overshoots slightly (the overshoot curve the release already used), the glow starts at 160ms (was 315ms), and the bob starts at 220ms, right as the press ends, and lasts 480ms. A flip now takes 700ms instead of 750ms. Unflip is unchanged.
+
 - **2026-10-04**: each animation slider and easing choice under the hand now has its own ↺ button on the right that resets just that value to its default, as Drifl asked.
 
 - **2026-10-04**: the flip animation now uses the values Drifl chose with the sliders: on flip the light starts at 70ms and spreads over 350ms with an ease-in curve (it used to start at 161ms and spread over 539ms, easing out), and the bob starts at 170ms, lasts 580ms and is lower (1.5cqh); on unflip the light shrinks over 450ms, the release starts at 180ms, and the bob starts at 350ms, lasts 350ms and is 1cqh high.
