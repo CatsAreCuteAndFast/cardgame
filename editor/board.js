@@ -63,31 +63,16 @@ function renderCell(cell, { classes = [], order = null, onclick }) {
   );
 }
 
-const EFFECT_FACES = {
+const CARD_FACES = {
+  "flip:fixed": { icon: "↻", name: "Flip all", color: "#963028" },
+  "flip:from": { icon: "↻", name: "Flip one", color: "#c8602a" },
   flip: { icon: "↻", name: "Flip", color: "#963028" },
   swap: { icon: "⇄", name: "Swap", color: "#2e6da4" },
   retarget: { icon: "✎", name: "Retarget", color: "#6a4a9a" },
 };
 
-function effectFace(effect) {
-  return EFFECT_FACES[effect] ?? { icon: "?", name: effect, color: "#555" };
-}
-
-function targetPhrase(target) {
-  switch (target.kind) {
-    case "fixed":
-      return target.coords.length === 1 ? "This tile" : "All of these";
-    case "from":
-      return "Pick 1 of these";
-    case "any":
-      return target.count === 1 ? "Pick any tile" : `Pick any ${target.count}`;
-    case "adjacent":
-      return `Pick ${target.count} side by side`;
-    case "card":
-      return "Change a card";
-    default:
-      return target.kind;
-  }
+function cardFace(effect, kind) {
+  return CARD_FACES[`${effect}:${kind}`] ?? CARD_FACES[effect] ?? { icon: "?", name: effect, color: "#555" };
 }
 
 function cardArt(target, width, height) {
@@ -117,7 +102,7 @@ function cardArt(target, width, height) {
 }
 
 function renderCard(card, snap, { classes = [], badge = null, onclick } = {}) {
-  const face = effectFace(card.effect);
+  const face = cardFace(card.effect, card.kind);
   const target = card.target ?? { kind: card.kind };
   const all = ["card", `effect-${card.effect}`, ...classes];
   if (card.single_use) all.push("single");
@@ -128,7 +113,6 @@ function renderCard(card, snap, { classes = [], badge = null, onclick } = {}) {
     [
       el("div", { class: "card-head" }, [el("span", { class: "card-icon", textContent: face.icon }), face.name]),
       el("div", { class: "card-art" }, cardArt(target, snap.width, snap.height)),
-      el("div", { class: "card-text", textContent: targetPhrase(target) }),
       card.copy ? el("span", { class: "copy-tag", textContent: "copy" }) : null,
       badge ? el("span", { class: "badge", textContent: badge }) : null,
     ],

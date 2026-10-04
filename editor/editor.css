@@ -298,22 +298,12 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 }
 .card-icon { font-size: 1.15em; line-height: 1; }
 .card-art { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 4px; }
-.card-text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 2.6em;
-  padding: 0 3px 4px;
-  font-size: .72rem;
-  font-weight: 600;
-  line-height: 1.15;
-}
 .mini-map {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
   gap: 2px;
-  width: min(100%, 52px * var(--cols) / var(--rows));
+  width: min(100%, 70px * var(--cols) / var(--rows));
   aspect-ratio: var(--cols) / var(--rows);
   max-height: 100%;
 }
