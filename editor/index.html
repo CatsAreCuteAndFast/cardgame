@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#16181d">
 <title>Level Editor</title>
 <link rel="stylesheet" href="editor.css">
+<link rel="stylesheet" href="../play/tune.css">
 </head>
 <body>
 <header class="top">
@@ -14,7 +15,7 @@
     <button class="tab" data-tab="edit">Edit</button>
     <button class="tab" data-tab="play">Play</button>
   </nav>
-  <div class="current"><span id="current-name"></span><button id="sync-status" class="sync-status" hidden></button><button id="reload" class="reload">↻ Reload</button></div>
+  <div class="current"><span id="current-name"></span><button id="sync-status" class="sync-status" hidden></button><button id="tune-toggle" class="reload">Anim</button><button id="reload" class="reload">↻ Reload</button></div>
 </header>
 
 <main>
@@ -122,5 +123,6 @@
 
 <script src="reload.js"></script>
 <script type="module" src="editor.js"></script>
+<script type="module" src="../play/tune.js"></script>
 </body>
 </html>
