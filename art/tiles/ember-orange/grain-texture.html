@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- renders editor/grain.png: the grain layer of grain-up.svg (overlay, opacity .5) over 50% grey, so drawing it with background-blend-mode: overlay on any face colour gives the same result as the svg.
      it covers 2x2 faces (320 svg units at 3.2px each, the detail of a 512px face) and wraps seamlessly (stitchTiles), so each tile can show a different part of it.
-     regenerate: google-chrome --headless --hide-scrollbars --force-device-scale-factor=1 --window-size=1024,1024 --screenshot=editor/grain.png art/tiles/ember-orange/grain-texture.html && python art/tiles/ember-orange/grey-png.py editor/grain.png -->
+     regenerate: google-chrome --headless --hide-scrollbars --force-device-scale-factor=1 --window-size=1024,1024 --screenshot=editor/grain.png art/tiles/ember-orange/grain-texture.html -->
 <html><body style="margin:0;background:#808080">
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 320 320" style="display:block">
 <filter id="grain" x="0" y="0" width="320" height="320" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="4" seed="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.6" intercept="-0.3"/><feFuncG type="linear" slope="1.6" intercept="-0.3"/><feFuncB type="linear" slope="1.6" intercept="-0.3"/><feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer></filter>

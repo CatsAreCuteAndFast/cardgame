@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: removed `art/tiles/ember-orange/grey-png.py` (Drifl deleted it). The regenerate command in `grain-texture.html` no longer calls it, so a regenerated `grain.png` is RGB (about 1.2MB instead of 825KB); the committed greyscale file is unchanged.
+
 - **2026-10-04**: every tile and card showed the same grain, so on a big page the same pattern was visible over and over. `editor/grain.png` now holds 2×2 faces' worth of seamless grain at the same detail (1024px, greyscale to keep it at 825KB), and each tile and card shows a different part of it, picked from its position (`grainSpot` in `board.js`). The new `art/tiles/ember-orange/grey-png.py` does the greyscale step after Chrome renders `grain-texture.html`.
 
 - **2026-10-04**: new tile designs from Drifl (`art/tiles/ember-orange/`, from the "Square tiles design" zip). The grain is finer and has more contrast (base frequency 1.4 instead of 0.6, 4 octaves, a contrast curve, worked out in sRGB), and the white top edge of unlit faces and the dark top edge of lit faces now curve around the rounded corners instead of being straight bands. `grain-texture.html` uses the new grain filter and `editor/grain.png` was regenerated from it (cards use it too), and both top edges are now inset shadows (`.face`, `.glow`) so they follow the corners.
