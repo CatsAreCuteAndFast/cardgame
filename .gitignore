@@ -18,3 +18,6 @@ env/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# design zips dropped in the repo root; Claude extracts them into art/ and deletes them
+*.zip
