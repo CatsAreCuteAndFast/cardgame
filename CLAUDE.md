@@ -86,6 +86,7 @@ Tapping empty space cancels back to `idle`. Invalid tile picks are ignored. `sel
 - Each effect and target kind is one object holding all its behaviour, so a new one is added in one place.
 - Rules code never changes a state in place; functions return new states.
 - Very few comments; a short one above each module or non-obvious function.
+- Animations must be cheap on phones (standing instruction): animate only `transform` (translate, scale at most 1×) and `opacity` on content drawn once, never counter-scale, scale far above 1×, or animate textures, filters, blend modes or layout. Remove animation classes when an animation ends. If an effect can't be done cheaply with the assets there are, say so and ask for the asset instead of building a costly workaround. Check the cost with a headless Chrome trace at phone size when in doubt.
 
 **Adding a new effect** means adding an entry to `EFFECTS` in `game/effects.js` (`onTiles`, `accepts`, and either `canPick`/`plan`/`apply` for tile effects or `canModify`/`apply` for card effects). The editor picks it up through `catalog()`; check `SAMPLE_TARGETS` in `editor/bridge.js` if it needs new target params, and add a card face in `CARD_FACES` (`board.js`).
 
