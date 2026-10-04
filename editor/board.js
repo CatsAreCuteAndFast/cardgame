@@ -34,9 +34,14 @@ export function setBoardShape(board, width, height) {
   board.style.setProperty("--rows", height);
 }
 
-const FLIP_MS = 700;
+// how long a flip runs in ms: the press-and-light and the bob after it, from the CSS variables in editor.css
+export function flipDuration() {
+  const style = getComputedStyle(document.documentElement);
+  const ms = (name) => parseFloat(style.getPropertyValue(name)) || 0;
+  return Math.max(ms("--flip-ms"), ms("--bob-start") + ms("--bob-ms"));
+}
 
-// anim: { on, elapsed } plays the press-and-light (or reverse) animation, already elapsed ms in.
+// anim: { on, elapsed, total } plays the press-and-light (or reverse) animation, already elapsed ms in.
 // the animation classes come off when it ends, so the browser drops the layers it made for it
 export function renderCell(cell, { classes = [], order = null, onclick, anim = null }) {
   const tileType = catalog.tiles.find((tile) => tile.id === cell.type);
@@ -60,7 +65,7 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
       order !== null ? el("span", { class: "order", textContent: order }) : null,
     ]),
   ]);
-  if (anim) setTimeout(() => tile.classList.remove("anim-on", "anim-off"), FLIP_MS - anim.elapsed);
+  if (anim) setTimeout(() => tile.classList.remove("anim-on", "anim-off"), anim.total - anim.elapsed);
   return el(
     "div",
     {
@@ -78,6 +83,7 @@ const flipHistory = new WeakMap();
 
 function flipAnimations(board, snap) {
   const now = performance.now();
+  const total = flipDuration();
   const prev = flipHistory.get(board);
   const step = prev && prev.game === snap.game_id;
   const animate = step && Math.abs(prev.plays - snap.plays) === 1;
@@ -87,7 +93,7 @@ function flipAnimations(board, snap) {
     return animate ? now : -Infinity;
   });
   flipHistory.set(board, { game: snap.game_id, plays: snap.plays, flipped: snap.cells.map((cell) => cell.flipped), changedAt });
-  return snap.cells.map((cell, i) => (now - changedAt[i] < FLIP_MS ? { on: cell.flipped, elapsed: now - changedAt[i] } : null));
+  return snap.cells.map((cell, i) => (now - changedAt[i] < total ? { on: cell.flipped, elapsed: now - changedAt[i], total } : null));
 }
 
 const CARD_FACES = {

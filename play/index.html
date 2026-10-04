@@ -7,6 +7,7 @@
 <title>Card Game Testing</title>
 <link rel="stylesheet" href="../editor/editor.css">
 <link rel="stylesheet" href="play.css">
+<link rel="stylesheet" href="tune.css">
 </head>
 <body>
 <header class="top">
@@ -14,7 +15,7 @@
     <button class="tab" data-tab="levels">Levels</button>
     <button class="tab" data-tab="play">Play</button>
   </nav>
-  <div class="current"><span id="current-name"></span><button id="reload" class="reload">↻ Reload</button></div>
+  <div class="current"><span id="current-name"></span><button id="tune-toggle" class="reload">Anim</button><button id="reload" class="reload">↻ Reload</button></div>
 </header>
 
 <main>
@@ -48,5 +49,6 @@
 
 <script src="../editor/reload.js"></script>
 <script type="module" src="play.js"></script>
+<script type="module" src="tune.js"></script>
 </body>
 </html>
