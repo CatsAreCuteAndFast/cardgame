@@ -1,10 +1,12 @@
-"use strict";
+// The tester page: plays the levels in levels/pack.json.
+
+import { $, el, playPrompt, playStatus, renderSnapshot, attachPlayInput } from "../editor/board.js";
+import * as bridge from "../editor/bridge.js";
 
 const PACK_PATH = "../levels/pack.json";
 const SOLVED_KEY = "cardgame.tester.solved";
 const LAST_KEY = "cardgame.tester.last";
 
-let bridge = null;
 let pack = [];
 let packError = null;
 let solved = new Set();
@@ -41,7 +43,7 @@ function startLevel(next) {
   index = next;
   playError = null;
   writeStorage(LAST_KEY, pack[index].name);
-  snap = bridge ? callBridge(() => bridge.start(pack[index].level)) : null;
+  snap = callBridge(() => bridge.start(pack[index].level));
 }
 
 function tap(call) {
@@ -105,7 +107,7 @@ function renderPlay() {
   const hand = $("play-hand");
   const status = $("play-status");
   $("play-empty").hidden = index !== null;
-  if (index !== null && !snap && bridge && !playError) startLevel(index);
+  if (index !== null && !snap && !playError) startLevel(index);
   $("play-error").hidden = !playError;
   $("play-error").textContent = playError ?? "";
   $("play-undo").disabled = !snap?.can_undo;
@@ -128,16 +130,6 @@ function renderPlay() {
   });
 }
 
-let toastTimer = null;
-
-function toast(message, sticky = false) {
-  const node = $("loading");
-  node.textContent = message;
-  node.hidden = false;
-  clearTimeout(toastTimer);
-  if (!sticky) toastTimer = setTimeout(() => (node.hidden = true), 1800);
-}
-
 async function loadPack() {
   try {
     const response = await fetch(PACK_PATH, { cache: "no-cache" });
@@ -151,18 +143,6 @@ async function loadPack() {
   const last = readStorage(LAST_KEY, null);
   const found = pack.findIndex((entry) => entry.name === last);
   if (found !== -1) index = found;
-  render();
-}
-
-async function loadRules() {
-  try {
-    bridge = await import("../editor/bridge.js");
-    catalog = bridge.catalog();
-    $("loading").hidden = true;
-  } catch (error) {
-    console.error(error);
-    toast("Couldn't load rules: " + (error.message ?? error), true);
-  }
   render();
 }
 
@@ -203,8 +183,8 @@ function init() {
   });
   window.addEventListener("resize", render);
   render();
+  $("loading").hidden = true;
   loadPack();
-  loadRules();
 }
 
 init();

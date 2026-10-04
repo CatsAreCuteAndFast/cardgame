@@ -1,20 +1,16 @@
-"use strict";
+// shared by the editor (editor/*.js) and the tester page (play/play.js)
 
-// shared by the editor (editor.js) and the tester page (play/play.js)
+import * as bridge from "./bridge.js";
 
-const SUBSTRATE_COLORS = { 1: "#466e50", 2: "#786432", 3: "#5a4a7a", 4: "#7a4a5a" };
-const LINK_COLORS = ["#c0392b", "#2e86c1", "#8e44ad", "#d68910", "#16a085", "#7f8c8d"];
+export const SUBSTRATE_COLORS = { 1: "#466e50", 2: "#786432", 3: "#5a4a7a", 4: "#7a4a5a" };
+export const LINK_COLORS = ["#c0392b", "#2e86c1", "#8e44ad", "#d68910", "#16a085", "#7f8c8d"];
 
-// replaced by the real registries once Pyodide has loaded game/rules
-let catalog = {
-  tiles: [{ id: "basic", can_flip: true, can_swap: true }],
-  substrates: [{ id: "plain", period: 0 }],
-  effects: [{ id: "flip", kinds: ["fixed", "from", "any", "adjacent"] }],
-};
+// tile, substrate and effect ids and the target kinds each effect takes, from the rules
+export const catalog = bridge.catalog();
 
-const $ = (id) => document.getElementById(id);
+export const $ = (id) => document.getElementById(id);
 
-function el(tag, props = {}, children = []) {
+export function el(tag, props = {}, children = []) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
     if (key === "class") node.className = value;
@@ -28,11 +24,11 @@ function el(tag, props = {}, children = []) {
   return node;
 }
 
-function sameCoord(a, b) {
+export function sameCoord(a, b) {
   return a[0] === b[0] && a[1] === b[1];
 }
 
-function setBoardShape(board, width, height) {
+export function setBoardShape(board, width, height) {
   board.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
   board.style.setProperty("--cols", width);
   board.style.setProperty("--rows", height);
@@ -41,7 +37,7 @@ function setBoardShape(board, width, height) {
 const FLIP_MS = 700;
 
 // anim: { on, elapsed } plays the press-and-light (or reverse) animation, already elapsed ms in
-function renderCell(cell, { classes = [], order = null, onclick, anim = null }) {
+export function renderCell(cell, { classes = [], order = null, onclick, anim = null }) {
   const tileType = catalog.tiles.find((tile) => tile.id === cell.type);
   const tileClasses = ["tile"];
   if (cell.flipped) tileClasses.push("flipped");
@@ -144,7 +140,7 @@ function renderCard(card, snap, { classes = [], badge = null, onclick } = {}) {
   );
 }
 
-function playStatus(snap, budget) {
+export function playStatus(snap, budget) {
   const used = budget - snap.plays;
   if (snap.won) return { text: `Solved in ${used} play${used === 1 ? "" : "s"}!`, className: "won" };
   if (snap.game_over) return { text: "Out of plays", className: "over" };
@@ -155,7 +151,7 @@ function selectedCard(snap) {
   return snap.selected === null ? null : snap.hand[snap.selected];
 }
 
-function playPrompt(snap) {
+export function playPrompt(snap) {
   if (snap.won || snap.game_over) return "";
   const card = selectedCard(snap);
   if (!card) return "Tap a card, or drag it onto the board";
@@ -203,7 +199,7 @@ function showPreview(board, preview, blocked, effect) {
   for (const coord of blocked) findCell(board, coord)?.classList.add("blocked");
 }
 
-function renderSnapshot(snap, board, hand, { onTile, onCard }) {
+export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   const scroll = [window.scrollX, window.scrollY, hand.scrollLeft];
   board.replaceChildren();
   hand.replaceChildren();
@@ -254,7 +250,7 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
 // holding a card still shows the same at full strength until it is let go
 // every gesture ends as the same bridge calls that taps make
 // api: { snap(), card(i), tile(row, col), nothing(), peek(i), render() }
-function attachPlayInput(board, hand, api) {
+export function attachPlayInput(board, hand, api) {
   const DRAG_START = 10;
   const LONG_PRESS = 400;
   let press = null;
@@ -453,3 +449,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const button = $("reload");
   if (button) button.onclick = () => hardReload(button);
 });
+
+let toastTimer = null;
+
+// shows a short message in the banner at the bottom (sticky ones stay until the next message)
+export function toast(message, sticky = false) {
+  const node = $("loading");
+  node.textContent = message;
+  node.hidden = false;
+  clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => (node.hidden = true), 1800);
+}
