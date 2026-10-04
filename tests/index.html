@@ -1,0 +1,20 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rules tests</title>
+<pre id="results">running</pre>
+<script type="module">
+  import { TESTS } from "./tests.js";
+  const lines = [];
+  let failed = 0;
+  for (const [name, test] of Object.entries(TESTS)) {
+    try {
+      await test();
+      lines.push(`ok: ${name}`);
+    } catch (error) {
+      failed++;
+      lines.push(`FAIL: ${name}: ${error.message}`);
+    }
+  }
+  lines.push(failed ? `${failed} failed` : "all passed");
+  document.getElementById("results").textContent = lines.join("\n");
+</script>
