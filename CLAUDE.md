@@ -28,7 +28,7 @@ When Drifl drops a zip of art into the repo, extract what matters into `art/` (o
 
 ## Commands
 
-- Run the tests: `python test.py` (needs Chrome or Chromium). It serves the repo locally and runs `tests/index.html` in headless Chrome. The tests (`tests/tests.js`) check level parsing and validation (`levels/demo.json`, start-flipped tiles, starting counters, rejected levels), that every level in `levels/pack.json` loads, is at the current level version and has a saved solution that still wins (each move is checked as a legal tap sequence), that for every move reachable within 3 plays on the demo and pack levels the play changes only tiles in its preview and never changes the old state, card play and selection on the demo level, and bridge undo/redo, `solution()` and `checkSolution`.
+- Run the tests: `python test.py` (needs Chrome or Chromium). It serves the repo locally and runs `tests/index.html` in headless Chrome. The tests (`tests/tests.js`) check level parsing and validation (`levels/demo.json`, start-flipped tiles, starting counters, rejected levels), that every level in `levels/pack.json` loads, is at the current level version and has a saved solution that still wins (each move is checked as a legal tap sequence), that for the moves reachable within 3 plays on the demo and pack levels (up to 200 positions per step) the play changes only tiles in its preview and never changes the old state, card play and selection on the demo level, and bridge undo/redo, `solution()` and `checkSolution`.
 - Run the game or editor locally: `python -m http.server` at the repo root, then open `localhost:8000/editor/` (or `localhost:8000/play/` for the tester page).
 
 ## Game mechanics
@@ -55,7 +55,7 @@ When Drifl drops a zip of art into the repo, extract what matters into `art/` (o
 - Which effect takes which kind (`accepts`): flip takes any tile kind, retarget takes only `card`, swap takes only `adjacent` with count 2.
 - Retarget turns `fixed` into `from` (and back) with the same coords. It **appends** the result to the hand as a new card with `single_use: true` and `copy: true`; the original card stays in the hand.
 
-**Pure core** (`game/state.js`): a state is `{level, tiles, counters, hand, plays}` and is never changed in place. `applyMove(state, move)` returns a new state; a move is `{card, cells}` for a tile card (the picks) or `{card, target}` for retarget. `legalMoves(state)` lists every distinct move (picks covering the same set of tiles count once; a fixed card has one move). `stateKey(state)` identifies a position without the plays left, for searching.
+**Pure core** (`game/state.js`): a state is `{level, tiles, counters, hand, plays}` and is never changed in place. `applyMove(state, move)` returns a new state; a move is `{card, cells}` for a tile card (the picks) or `{card, target}` for retarget. `legalMoves(state)` lists every distinct move (picks covering the same set of tiles count once, and each set is explored once, because what can be picked next depends only on the set; a fixed card has one move). `stateKey(state)` identifies a position without the plays left, for searching.
 
 **Controller phases** (`game/controller.js`): a game is `{state, phase}` and `handle(game, intent)` returns a new game. Intents are `{tap: "card", index}`, `{tap: "tile", cell}` and `{tap: "nothing"}`.
 1. `idle`: tapping a card selects it, moving to `targeting` (`{index, picks}`).

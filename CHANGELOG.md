@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: `legalMoves` explores each set of picked tiles once instead of every pick order, since what can be picked next depends only on the set (same moves, about 4× faster on a 6×6 `any 4` card; matters for the tests and a future solver). Also corrected the CLAUDE.md description of the move test, which stops at 200 positions per step.
+
 - **2026-10-04**: stricter level and solution checks. `parseLevel` now rejects a budget below 1, coords with extra numbers (`[0, 0, 7]` in links or flipped, 4-number counters; the Python rules rejected these too), target kinds that are inherited object keys such as `"toString"` (they gave "kind.parse is not a function"), and `fixed` or `from` cards with no tiles, which can never be played (this resolves the known issue about empty fixed cards). Its messages number cards from 1, like the editor. `playMoves` rejects moves after the level is won, which the game doesn't allow, and a retarget move whose target isn't a whole number.
 
 - **2026-10-04**: Reset no longer animates the tiles back after exactly one play, and neither does restarting the editor's Play tab after an edit or switching to a same-size level whose plays left differ by one. `flipAnimations` treated any one-play difference as a step. The bridge snapshot now has `game_id` (bumped by every `start()`), and only steps within the same game animate.

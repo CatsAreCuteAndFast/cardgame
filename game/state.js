@@ -46,7 +46,8 @@ export function applyMove(state, move) {
   return { ...state, tiles, hand, counters: tick(state.level, state.counters), plays: state.plays - 1 };
 }
 
-// every distinct move; picks that act the same (same set of tiles) are listed once
+// every distinct move; picks that act the same (same set of tiles) are listed once.
+// what can be picked next depends only on the set picked so far, so each set is explored once
 export function legalMoves(state) {
   const moves = [];
   state.hand.forEach((card, index) => {
@@ -54,17 +55,18 @@ export function legalMoves(state) {
       state.hand.forEach((other, target) => canModify(card.effect, other.target) && moves.push({ card: index, target }));
       return;
     }
+    if (card.target.kind === "fixed") {
+      const cell = state.tiles.findIndex((_, cell) => canPick(state, index, [], cell));
+      if (cell !== -1) moves.push({ card: index, cells: [cell] });
+      return;
+    }
     const needed = TARGETS[card.target.kind].needs(card.target);
     const seen = new Set();
     const extend = (picks) => {
-      if (picks.length === needed) {
-        const key = card.target.kind === "fixed" ? "" : [...picks].sort((a, b) => a - b).join(",");
-        if (!seen.has(key)) {
-          seen.add(key);
-          moves.push({ card: index, cells: picks });
-        }
-        return;
-      }
+      const key = [...picks].sort((a, b) => a - b).join(",");
+      if (seen.has(key)) return;
+      seen.add(key);
+      if (picks.length === needed) return moves.push({ card: index, cells: picks });
       state.tiles.forEach((_, cell) => canPick(state, index, picks, cell) && extend([...picks, cell]));
     };
     extend([]);
