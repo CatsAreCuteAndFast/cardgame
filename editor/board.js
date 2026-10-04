@@ -63,6 +63,78 @@ function renderCell(cell, { classes = [], order = null, onclick }) {
   );
 }
 
+const EFFECT_FACES = {
+  flip: { icon: "↻", name: "Flip", color: "#963028" },
+  swap: { icon: "⇄", name: "Swap", color: "#2e6da4" },
+  retarget: { icon: "✎", name: "Retarget", color: "#6a4a9a" },
+};
+
+function effectFace(effect) {
+  return EFFECT_FACES[effect] ?? { icon: "?", name: effect, color: "#555" };
+}
+
+function targetPhrase(target) {
+  switch (target.kind) {
+    case "fixed":
+      return target.coords.length === 1 ? "This tile" : "All of these";
+    case "from":
+      return "Pick 1 of these";
+    case "any":
+      return target.count === 1 ? "Pick any tile" : `Pick any ${target.count}`;
+    case "adjacent":
+      return `Pick ${target.count} side by side`;
+    case "card":
+      return "Change a card";
+    default:
+      return target.kind;
+  }
+}
+
+function cardArt(target, width, height) {
+  if (target.kind === "card") {
+    return el("div", { class: "retarget-art" }, [
+      el("span", { class: "mini-card fixed" }),
+      el("span", { class: "arrow", textContent: "⇄" }),
+      el("span", { class: "mini-card from" }),
+    ]);
+  }
+  const marks = target.kind === "fixed" ? "on" : target.kind === "from" ? "opt" : "any";
+  const listed = target.coords ?? [];
+  const cells = [];
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const hit = target.coords ? listed.some((coord) => sameCoord(coord, [row, col])) : true;
+      cells.push(el("span", { class: hit ? marks : "" }));
+    }
+  }
+  const map = el("div", { class: "mini-map", style: `--cols:${width};--rows:${height}` }, cells);
+  if (target.kind === "any") map.append(el("span", { class: "mini-count", textContent: `×${target.count}` }));
+  if (target.kind === "adjacent") {
+    const pair = Array.from({ length: target.count }, () => el("span"));
+    map.append(el("span", { class: "mini-count pair" }, pair));
+  }
+  return map;
+}
+
+function renderCard(card, snap, { classes = [], badge = null, onclick } = {}) {
+  const face = effectFace(card.effect);
+  const target = card.target ?? { kind: card.kind };
+  const all = ["card", `effect-${card.effect}`, ...classes];
+  if (card.single_use) all.push("single");
+  if (card.copy) all.push("copy");
+  return el(
+    "button",
+    { class: all.join(" "), style: `--effect:${face.color}`, title: card.label, onclick },
+    [
+      el("div", { class: "card-head" }, [el("span", { class: "card-icon", textContent: face.icon }), face.name]),
+      el("div", { class: "card-art" }, cardArt(target, snap.width, snap.height)),
+      el("div", { class: "card-text", textContent: targetPhrase(target) }),
+      card.copy ? el("span", { class: "copy-tag", textContent: "copy" }) : null,
+      badge ? el("span", { class: "badge", textContent: badge }) : null,
+    ],
+  );
+}
+
 function playStatus(snap, budget) {
   const used = budget - snap.plays;
   if (snap.won) return { text: `Solved in ${used} play${used === 1 ? "" : "s"}!`, className: "won" };
@@ -153,26 +225,13 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   showPreview(board, snap.preview, snap.blocked, card?.effect);
 
   snap.hand.forEach((card, index) => {
-    const classes = ["card"];
-    if (card.single_use) classes.push("single");
+    const classes = [];
     if (snap.selected === index) classes.push("selected");
     else if (snap.candidate_cards.includes(index)) classes.push("candidate");
     const badge = snap.selected === index && snap.needed > 1 ? `${snap.picked.length}/${snap.needed}` : null;
-    hand.append(
-      el(
-        "button",
-        {
-          class: classes.join(" "),
-          dataset: { index },
-          textContent: card.label,
-          onclick: (e) => (e.stopPropagation(), onCard(index)),
-        },
-        [
-          card.single_use ? el("span", { class: "single-tag", textContent: "single use" }) : null,
-          badge ? el("span", { class: "badge", textContent: badge }) : null,
-        ],
-      ),
-    );
+    const node = renderCard(card, snap, { classes, badge, onclick: (e) => (e.stopPropagation(), onCard(index)) });
+    node.dataset.index = index;
+    hand.append(node);
   });
   window.scrollTo(scroll[0], scroll[1]);
   hand.scrollLeft = scroll[2];
@@ -181,10 +240,12 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
 // a drag only acts on drop: a fixed card dropped on the board plays, other tile cards get selected,
 // and retarget is dropped on the card to change; swiping picks neighbouring tiles.
 // while a tile card is dragged, its options and changes fade in as it nears the board's centre (--drag 0..1).
+// holding a card still shows the same at full strength until it is let go
 // every gesture ends as the same bridge calls that taps make
 // api: { snap(), card(i), tile(row, col), nothing(), peek(i), render() }
 function attachPlayInput(board, hand, api) {
   const DRAG_START = 10;
+  const LONG_PRESS = 400;
   let press = null;
   let suppressClickUntil = 0;
 
@@ -205,23 +266,40 @@ function attachPlayInput(board, hand, api) {
     return true;
   }
 
-  function startCardDrag() {
-    const card = api.snap()?.hand[press.index];
-    if (!card) return (press = null);
-    press.ghost = el("div", { class: "card drag-ghost" + (card.single_use ? " single" : ""), textContent: card.label });
-    document.body.append(press.ghost);
-    const peek = api.peek(press.index);
-    if (!peek) return;
+  // shows what the card at index would do without selecting it; returns true if it acts on tiles
+  function showPeek(index) {
+    const card = api.snap()?.hand[index];
+    const peek = card && api.peek(index);
+    if (!peek) return false;
     for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("candidate", "targeting", "picked");
     for (const node of hand.querySelectorAll(".card")) node.classList.remove("candidate");
     if (card.kind === "card") {
-      for (const index of peek.candidate_cards) hand.querySelector(`.card[data-index="${index}"]`)?.classList.add("candidate");
-      return;
+      for (const i of peek.candidate_cards) hand.querySelector(`.card[data-index="${i}"]`)?.classList.add("candidate");
+      return false;
     }
-    board.classList.add("dragging");
-    board.style.setProperty("--drag", 0);
     for (const coord of peek.candidate_tiles) findCell(board, coord)?.classList.add("targeting");
     showPreview(board, peek.preview, peek.blocked, card.effect);
+    return true;
+  }
+
+  function startCardDrag() {
+    const source = hand.querySelector(`.card[data-index="${press.index}"]`);
+    if (!source) return (press = null);
+    press.ghost = source.cloneNode(true);
+    press.ghost.classList.remove("selected", "candidate", "drop-target", "peeking");
+    press.ghost.classList.add("drag-ghost");
+    document.body.append(press.ghost);
+    source.classList.remove("peeking");
+    if (!showPeek(press.index)) return;
+    board.classList.add("dragging");
+    board.style.setProperty("--drag", 0);
+  }
+
+  function startLongPress() {
+    if (!press || press.dragging) return;
+    press.peeking = true;
+    hand.querySelector(`.card[data-index="${press.index}"]`)?.classList.add("peeking");
+    showPeek(press.index);
   }
 
   function dragStrength(e) {
@@ -285,6 +363,12 @@ function attachPlayInput(board, hand, api) {
   }
 
   function finish(e, cancelled) {
+    clearTimeout(press?.timer);
+    if (press?.peeking && !press.dragging) {
+      press = null;
+      suppressClickUntil = performance.now() + 50;
+      return api.render();
+    }
     if (!press?.dragging) return (press = null);
     press.ghost?.remove();
     clearDropTargets();
@@ -305,7 +389,9 @@ function attachPlayInput(board, hand, api) {
     const snap = api.snap();
     if (!e.isPrimary || !card || !snap || snap.won || snap.game_over) return;
     press = { kind: "card", index: Number(card.dataset.index), x: e.clientX, y: e.clientY, dragging: false };
+    press.timer = setTimeout(startLongPress, LONG_PRESS);
   });
+  hand.addEventListener("contextmenu", (e) => e.target.closest(".card") && e.preventDefault());
   board.addEventListener("pointerdown", (e) => {
     const cell = e.target.closest(".cell[data-row]");
     if (!e.isPrimary || !cell || !canSwipe(api.snap()) || !cell.classList.contains("targeting")) return;
@@ -316,6 +402,7 @@ function attachPlayInput(board, hand, api) {
     if (!press.dragging) {
       if (Math.hypot(e.clientX - press.x, e.clientY - press.y) < DRAG_START) return;
       press.dragging = true;
+      clearTimeout(press.timer);
       if (press.kind === "card") startCardDrag();
       if (!press) return;
     }

@@ -129,7 +129,14 @@ def snapshot() -> str:
         "height": board.height,
         "cells": cells,
         "hand": [
-            {"label": card.label, "single_use": card.single_use, "effect": card.effect_id, "kind": target_to_dict(card.targets)["kind"]}
+            {
+                "label": card.label,
+                "single_use": card.single_use,
+                "copy": not any(card is original for original in state.level.card_list),
+                "effect": card.effect_id,
+                "kind": target_to_dict(card.targets)["kind"],
+                "target": target_to_dict(card.targets),
+            }
             for card in state.hand
         ],
         "plays": view.plays_remaining,
