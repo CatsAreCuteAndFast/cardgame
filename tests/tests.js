@@ -1,4 +1,4 @@
-import { parseLevel } from "../game/level.js";
+import { parseLevel, upgradeLevel, LEVEL_VERSION } from "../game/level.js";
 import { newState, applyMove, legalMoves, isWon, stateKey } from "../game/state.js";
 import { startGame, handle, selection } from "../game/controller.js";
 import { EFFECTS } from "../game/effects.js";
@@ -39,6 +39,12 @@ async function testLevels() {
   }
   rejects({ ...demo, flipped: [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]] }, "an already solved level should be rejected");
   rejects({ ...demo, cards: [{ effect: "swap", target: { kind: "any", count: 2 } }] }, "swap only takes adjacent 2");
+
+  const { version, ...unversioned } = demo;
+  assert(version === LEVEL_VERSION, "levels/demo.json should be at the current level version");
+  assert(upgradeLevel(unversioned).version === LEVEL_VERSION && parseLevel(unversioned).width === 3, "a level without a version is version 1");
+  rejects({ ...demo, version: LEVEL_VERSION + 1 }, "a level from a newer game should be rejected");
+  rejects({ ...demo, version: "1" }, "a non-integer version should be rejected");
 }
 
 async function testPack() {
@@ -47,6 +53,7 @@ async function testPack() {
   for (const entry of pack) {
     assert(typeof entry?.name === "string" && "level" in entry, `bad pack entry ${JSON.stringify(entry)}`);
     try {
+      assert(entry.level.version === LEVEL_VERSION, "at the current level version");
       parseLevel(entry.level);
     } catch (error) {
       throw new Error(`pack level ${entry.name} is invalid: ${error.message}`);

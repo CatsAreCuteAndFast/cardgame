@@ -1,5 +1,7 @@
 // Turns level JSON into a checked level. Every check lives here; parseLevel throws an Error
 // with a readable message when the level is invalid.
+// Levels carry a format version. When the format changes, bump LEVEL_VERSION and add a
+// migration from the old version, so saved levels, the gist and pack.json keep loading.
 
 import { TILE_TYPES, SUBSTRATE_TYPES, toCell } from "./types.js";
 import { TARGETS, parseTarget } from "./targets.js";
@@ -46,8 +48,27 @@ function card(data, index, width, height) {
   return { effect: data.effect, target, single_use: Boolean(data.single_use), copy: false };
 }
 
-export function parseLevel(data) {
-  if (typeof data !== "object" || data === null) throw new Error("level should be an object");
+export const LEVEL_VERSION = 1;
+
+// MIGRATIONS[n] turns a version n level into a version n + 1 level
+const MIGRATIONS = {};
+
+// levels saved before versions existed have no version and are version 1
+export function upgradeLevel(data) {
+  if (typeof data !== "object" || data === null || Array.isArray(data)) throw new Error("level should be an object");
+  let version = data.version ?? 1;
+  if (!Number.isInteger(version) || version < 1) throw new Error(`unknown level version ${JSON.stringify(data.version)}`);
+  if (version > LEVEL_VERSION) {
+    throw new Error(`this level is from a newer version of the game (level format ${version}, this page reads up to ${LEVEL_VERSION}); press Reload`);
+  }
+  let level = data;
+  for (; version < LEVEL_VERSION; version++) level = MIGRATIONS[version](level);
+  const { version: _, ...rest } = level;
+  return { version: LEVEL_VERSION, ...rest };
+}
+
+export function parseLevel(raw) {
+  const data = upgradeLevel(raw);
   if (!Number.isInteger(data.budget)) throw new Error("budget should be a whole number");
   const tiles = grid(data.tiles, "tiles", TILE_TYPES);
   const width = data.tiles[0].length;

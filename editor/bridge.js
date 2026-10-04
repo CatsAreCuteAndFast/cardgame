@@ -4,8 +4,10 @@
 import { TILE_TYPES, SUBSTRATE_TYPES, toCell, toCoord } from "../game/types.js";
 import { TARGETS } from "../game/targets.js";
 import { EFFECTS } from "../game/effects.js";
-import { parseLevel } from "../game/level.js";
+import { parseLevel, upgradeLevel, LEVEL_VERSION } from "../game/level.js";
 import { startGame, handle, selection } from "../game/controller.js";
+
+export { upgradeLevel };
 
 const SAMPLE_TARGETS = { fixed: { kind: "fixed", coords: [] }, from: { kind: "from", coords: [] }, any: { kind: "any", count: 1 }, adjacent: { kind: "adjacent", count: 2 }, card: { kind: "card" } };
 
@@ -16,6 +18,7 @@ let game = null;
 
 export function catalog() {
   return {
+    level_version: LEVEL_VERSION,
     tiles: Object.entries(TILE_TYPES).map(([id, type]) => ({ id, can_flip: type.canFlip, can_swap: type.canSwap })),
     substrates: Object.entries(SUBSTRATE_TYPES).map(([id, type]) => ({ id, period: type.period })),
     effects: Object.entries(EFFECTS).map(([id, effect]) => ({ id, kinds: Object.keys(TARGETS).filter((kind) => effect.accepts(SAMPLE_TARGETS[kind])) })),

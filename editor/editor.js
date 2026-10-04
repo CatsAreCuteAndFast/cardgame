@@ -42,6 +42,7 @@ function normalizeLevels() {
     if (!folders.some((folder) => folder.id === level.folder)) level.folder = null;
     if (!Array.isArray(level.data.flipped)) level.data.flipped = [];
     if (!Array.isArray(level.data.counters)) level.data.counters = [];
+    if (bridge) level.data = upgradeData(level.data);
   }
   if (!levels.some((level) => level.id === currentId)) currentId = levels[0]?.id ?? null;
 }
@@ -251,6 +252,7 @@ function current() {
 
 function blankLevel(width = 3, height = 3) {
   return {
+    version: catalog.level_version,
     budget: 10,
     tiles: grid(width, height, () => catalog.tiles[0].id),
     substrates: grid(width, height, () => catalog.substrates[0].id),
@@ -294,17 +296,28 @@ function formatLevel(data) {
       : ` "${key}": []`;
   const inline = (key, items) => ` "${key}": [${items.map((item) => JSON.stringify(item).replaceAll(",", ", ")).join(", ")}]`;
   return (
-    `{\n "budget": ${data.budget},\n` +
+    `{\n${data.version ? ` "version": ${data.version},\n` : ""} "budget": ${data.budget},\n` +
     [block("tiles", data.tiles), block("substrates", data.substrates), block("links", data.links), inline("flipped", data.flipped), inline("counters", data.counters), block("cards", data.cards)].join(",\n") +
     "\n}\n"
   );
+}
+
+// brings a level up to the current format; one from a newer game is left as it is for validation to report
+function upgradeData(data) {
+  try {
+    return bridge.upgradeLevel(data);
+  } catch {
+    return data;
+  }
 }
 
 function normalizeLevel(raw) {
   if (!raw || !Array.isArray(raw.tiles) || !Array.isArray(raw.substrates)) {
     throw new Error("not a level: needs tiles and substrates");
   }
+  if (bridge) raw = bridge.upgradeLevel(raw);
   return {
+    version: raw.version,
     budget: Number(raw.budget) || 1,
     tiles: raw.tiles,
     substrates: raw.substrates,
@@ -990,6 +1003,8 @@ async function loadRules() {
     $("loading").hidden = true;
     brush.tiles = catalog.tiles[0].id;
     brush.substrates = catalog.substrates[0].id;
+    normalizeLevels();
+    saveLevels();
   } catch (error) {
     console.error(error);
     toast("Couldn't load rules: " + (error.message ?? error), true);
