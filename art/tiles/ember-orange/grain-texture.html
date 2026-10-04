@@ -3,6 +3,6 @@
      regenerate: google-chrome --headless --hide-scrollbars --force-device-scale-factor=1 --window-size=512,512 --screenshot=editor/grain.png art/tiles/ember-orange/grain-texture.html -->
 <html><body style="margin:0;background:#808080">
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 160 160" style="display:block">
-<filter id="grain" x="0" y="0" width="160" height="160" filterUnits="userSpaceOnUse"><feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="4"/><feColorMatrix type="saturate" values="0"/></filter>
+<filter id="grain" x="0" y="0" width="160" height="160" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="4" seed="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.6" intercept="-0.3"/><feFuncG type="linear" slope="1.6" intercept="-0.3"/><feFuncB type="linear" slope="1.6" intercept="-0.3"/><feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer></filter>
 <g style="isolation:isolate"><rect width="160" height="160" fill="#808080"/><rect width="160" height="160" filter="url(#grain)" opacity="0.5" style="mix-blend-mode:overlay"/></g>
 </svg></body></html>

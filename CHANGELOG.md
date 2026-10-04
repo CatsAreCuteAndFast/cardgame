@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: new tile designs from Drifl (`art/tiles/ember-orange/`, from the "Square tiles design" zip). The grain is finer and has more contrast (base frequency 1.4 instead of 0.6, 4 octaves, a contrast curve, worked out in sRGB), and the white top edge of unlit faces and the dark top edge of lit faces now curve around the rounded corners instead of being straight bands. `grain-texture.html` uses the new grain filter and `editor/grain.png` was regenerated from it (cards use it too), and both top edges are now inset shadows (`.face`, `.glow`) so they follow the corners.
+
 - **2026-10-04**: new flip timing from Drifl's tuning: the press takes 220ms and overshoots slightly (the overshoot curve the release already used), the glow starts at 160ms (was 315ms), and the bob starts at 220ms, right as the press ends, and lasts 480ms. A flip now takes 700ms instead of 750ms. Unflip is unchanged.
 
 - **2026-10-04**: each animation slider and easing choice under the hand now has its own ↺ button on the right that resets just that value to its default, as Drifl asked.
