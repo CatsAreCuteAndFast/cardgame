@@ -57,9 +57,9 @@ When Drifl drops a zip of art into the repo, extract what matters into `art/` (o
 
 **Pure core** (`game/state.js`): a state is `{level, tiles, counters, hand, plays}` and is never changed in place. `applyMove(state, move)` returns a new state; a move is `{card, cells}` for a tile card (the picks) or `{card, target}` for retarget. `legalMoves(state)` lists every distinct move (picks covering the same set of tiles count once, and each set is explored once, because what can be picked next depends only on the set; a fixed card has one move). `stateKey(state)` identifies a position without the plays left, for searching.
 
-**Controller phases** (`game/controller.js`): a game is `{state, phase}` and `handle(game, intent)` returns a new game. Intents are `{tap: "card", index}`, `{tap: "tile", cell}` and `{tap: "nothing"}`.
+**Controller phases** (`game/controller.js`): a game is `{state, phase, move}` (`move` is the last move played, set on the game a play produces) and `handle(game, intent)` returns a new game. Intents are `{tap: "card", index}`, `{tap: "tile", cell}` and `{tap: "nothing"}`.
 1. `idle`: tapping a card selects it, moving to `targeting` (`{index, picks}`).
-2. `targeting`: the card is played once it has enough picks. Afterwards the phase becomes `won` if all tiles are flipped, `over` if the budget is used up, and `idle` otherwise. `won` and `over` ignore all input. While a card is targeting tiles, tapping another card switches to that card, and tapping the same card cancels. While a card is targeting a card (retarget), tapping a card is a pick, and taps on cards that can't be picked are ignored.
+2. `targeting`: the card is played once it has enough picks. Afterwards the phase becomes `won` if all tiles are flipped, `over` if the budget is used up, and `idle` otherwise. `won` and `over` ignore all input. Tapping the selected card again cancels. While a card is targeting tiles, tapping another card switches to that card. While a card is targeting a card (retarget), tapping another card is a pick, and taps on cards that can't be picked are ignored.
 
 Tapping empty space cancels back to `idle`. Invalid tile picks are ignored. `selection(state, index, picks)` gives what a selected card can pick next (`candidateTiles`/`candidateCards`), what it would change (`preview`/`blocked`, from the effect's `plan`) and how many picks it needs.
 
@@ -90,7 +90,7 @@ Tapping empty space cancels back to `idle`. Invalid tile picks are ignored. `sel
 
 **Adding a new effect** means adding an entry to `EFFECTS` in `game/effects.js` (`onTiles`, `accepts`, and either `canPick`/`plan`/`apply` for tile effects or `canModify`/`apply` for card effects). The editor picks it up through `catalog()`; check `SAMPLE_TARGETS` in `editor/bridge.js` if it needs new target params, and add a card face in `CARD_FACES` (`board.js`).
 
-**Adding a new target kind** means adding an entry to `TARGETS` in `game/targets.js` (`onTiles`, `needs`, `isCandidate`, `resolve`, `parse`, `check`, `describe`), a sample in `SAMPLE_TARGETS` in `editor/bridge.js`, and `KIND_LABELS`/`defaultTarget`/the card details UI in `editor/editor.js` (and the card mini-map in `cardArt`, `board.js`).
+**Adding a new target kind** means adding an entry to `TARGETS` in `game/targets.js` (`onTiles`, `needs`, `isCandidate`, `resolve`, `parse`, `check`, `describe`), a sample in `SAMPLE_TARGETS` in `editor/bridge.js`, and `KIND_LABELS`/`defaultTarget`/the card details UI in `editor/edit.js` (and the card mini-map in `cardArt`, `board.js`).
 
 ## Known issues / loose ends (not yet confirmed as intended)
 

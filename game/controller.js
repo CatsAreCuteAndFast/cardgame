@@ -19,8 +19,9 @@ function play(state, move) {
   return { state: next, phase, move };
 }
 
+// tapping the selected card again deselects it, like a tile card
 function handleCardTarget(game, phase, intent) {
-  if (intent.tap !== "card") return { ...game, phase: IDLE };
+  if (intent.tap !== "card" || intent.index === phase.index) return { ...game, phase: IDLE };
   const card = game.state.hand[phase.index];
   if (!canModify(card.effect, game.state.hand[intent.index].target)) return game;
   return play(game.state, { card: phase.index, target: intent.index });

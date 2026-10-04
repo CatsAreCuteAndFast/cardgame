@@ -124,6 +124,12 @@ async function testCardPlay() {
   tap({ tap: "card", index: 0 });
   assert(game.phase.kind === "idle", "tapping the selected card again deselects it");
 
+  tap({ tap: "card", index: 3 });
+  tap({ tap: "card", index: 4 });
+  assert(game.phase.kind === "targeting" && game.phase.index === 3, "retarget ignores a card it can't change");
+  tap({ tap: "card", index: 3 });
+  assert(game.phase.kind === "idle", "tapping the selected retarget card again deselects it");
+
   tap({ tap: "card", index: 2 });
   tap({ tap: "tile", cell: cell(0, 2) });
   sel = selection(game.state, 2, game.phase.picks);
