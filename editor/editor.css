@@ -349,11 +349,8 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.6em;
-  height: 1.6em;
-  border-radius: 50%;
-  background: #000a;
   color: #fff;
+  text-shadow: 0 0 0.15em #000a;
   font-size: min(30cqw, 2.2rem);
   font-weight: 700;
 }
