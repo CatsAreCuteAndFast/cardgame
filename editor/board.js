@@ -47,7 +47,13 @@ export function flipDuration() {
 
 // anim: { on, elapsed, total } plays the press-and-light (or reverse) animation, already elapsed ms in.
 // the animation classes come off when it ends, so the browser drops the layers it made for it
-export function renderCell(cell, { classes = [], order = null, onclick, anim = null }) {
+// which part of grain.png tile or card number n shows, so neighbours don't share the same grain
+function grainSpot(n) {
+  const hash = Math.imul(n + 1, 2654435761) >>> 0;
+  return `--gx:${hash % 100}%;--gy:${(hash >>> 8) % 100}%;`;
+}
+
+export function renderCell(cell, { classes = [], order = null, onclick, anim = null, grain = 0 }) {
   const tileType = catalog.tiles.find((tile) => tile.id === cell.type);
   const tileClasses = ["tile"];
   if (cell.flipped) tileClasses.push("flipped");
@@ -55,7 +61,7 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
   if (tileType && !tileType.can_swap) tileClasses.push("ns");
   if (anim) tileClasses.push(anim.on ? "anim-on" : "anim-off");
   const linkIndex = typeof cell.link === "string" ? Number(cell.link) : cell.link;
-  const tile = el("div", { class: tileClasses.join(" "), title: cell.type, style: anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms` : "" }, [
+  const tile = el("div", { class: tileClasses.join(" "), title: cell.type, style: grainSpot(grain) + (anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms` : "") }, [
     el("div", { class: "base" }),
     el("div", { class: "face" }, [
       el("div", { class: "light" }),
@@ -138,7 +144,7 @@ function cardArt(target, width, height) {
   return map;
 }
 
-function renderCard(card, snap, { classes = [], badge = null, onclick } = {}) {
+function renderCard(card, snap, { classes = [], badge = null, onclick, grain = 0 } = {}) {
   const face = cardFace(card.effect, card.kind);
   const target = card.target ?? { kind: card.kind };
   const all = ["card", `effect-${card.effect}`, ...classes];
@@ -146,7 +152,7 @@ function renderCard(card, snap, { classes = [], badge = null, onclick } = {}) {
   if (card.copy) all.push("copy");
   return el(
     "button",
-    { class: all.join(" "), style: `--effect:${face.color}`, title: card.label, onclick },
+    { class: all.join(" "), style: `--effect:${face.color};${grainSpot(grain + 1000)}`, title: card.label, onclick },
     [
       el("div", { class: "card-head" }, [el("span", { class: "card-icon", textContent: face.icon }), face.name]),
       el("div", { class: "card-art" }, cardArt(target, snap.width, snap.height)),
@@ -234,6 +240,7 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     else if (candidate) classes.push(snap.targeting ? "targeting" : "candidate");
     const node = renderCell(cell, {
       classes,
+      grain: index,
       anim: anims[index],
       onclick: (e) => {
         e.stopPropagation();
@@ -252,7 +259,7 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     if (snap.selected === index) classes.push("selected");
     else if (snap.candidate_cards.includes(index)) classes.push("candidate");
     const badge = snap.selected === index && snap.needed > 1 ? `${snap.picked.length}/${snap.needed}` : null;
-    const node = renderCard(card, snap, { classes, badge, onclick: (e) => (e.stopPropagation(), onCard(index)) });
+    const node = renderCard(card, snap, { classes, badge, grain: index, onclick: (e) => (e.stopPropagation(), onCard(index)) });
     node.dataset.index = index;
     hand.append(node);
   });

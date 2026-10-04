@@ -177,6 +177,7 @@ export function renderEdit() {
           {
             classes: order !== -1 ? ["coord-on"] : [],
             order: order !== -1 ? order + 1 : null,
+            grain: row * width + col,
             onclick: () => editTap(row, col),
           },
         ),

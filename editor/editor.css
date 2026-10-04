@@ -174,7 +174,8 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   transform: scale(0);
 }
 .grain, .shade, .glow { position: absolute; inset: 0; }
-.grain { background: url("grain.png") 0 0 / 100% auto no-repeat; mix-blend-mode: overlay; }
+/* grain.png is 2x2 faces of seamless grain at a face's detail; --gx/--gy (grainSpot) pick a different part of it for each tile */
+.grain { background: url("grain.png") var(--gx, 0) var(--gy, 0) / 200% auto repeat; mix-blend-mode: overlay; }
 .shade { background: radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024); }
 /* the lit face's dark top edge (an inset shadow, so it follows the rounded corners like in the svg) and inner glow */
 .glow {
@@ -433,8 +434,9 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
     radial-gradient(80% 60% at 50% 40%, #ffffff1f, #00000024),
     url("grain.png"),
     var(--tile);
-  background-size: auto, 100% auto, auto;
-  background-repeat: no-repeat;
+  background-position: 0 0, var(--gx, 0) var(--gy, 0), 0 0;
+  background-size: auto, 200% auto, auto;
+  background-repeat: no-repeat, repeat, no-repeat;
   background-blend-mode: normal, overlay, normal;
   box-shadow: 0 5px 0 #221b28;
   color: #fff;
