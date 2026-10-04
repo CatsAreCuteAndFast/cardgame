@@ -36,7 +36,8 @@ export function setBoardShape(board, width, height) {
 
 const FLIP_MS = 700;
 
-// anim: { on, elapsed } plays the press-and-light (or reverse) animation, already elapsed ms in
+// anim: { on, elapsed } plays the press-and-light (or reverse) animation, already elapsed ms in.
+// the animation classes come off when it ends, so the browser drops the layers it made for it
 export function renderCell(cell, { classes = [], order = null, onclick, anim = null }) {
   const tileType = catalog.tiles.find((tile) => tile.id === cell.type);
   const tileClasses = ["tile"];
@@ -45,6 +46,21 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
   if (tileType && !tileType.can_swap) tileClasses.push("ns");
   if (anim) tileClasses.push(anim.on ? "anim-on" : "anim-off");
   const linkIndex = typeof cell.link === "string" ? Number(cell.link) : cell.link;
+  const tile = el("div", { class: tileClasses.join(" "), title: cell.type, style: anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms` : "" }, [
+    el("div", { class: "base" }),
+    el("div", { class: "face" }, [
+      el("div", { class: "light" }),
+      el("div", { class: "grain" }),
+      el("div", { class: "shade" }),
+      el("div", { class: "glow" }),
+      cell.period > 0 ? el("span", { class: "counter", textContent: cell.counter }) : null,
+      linkIndex !== null && linkIndex !== -1
+        ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
+        : null,
+      order !== null ? el("span", { class: "order", textContent: order }) : null,
+    ]),
+  ]);
+  if (anim) setTimeout(() => tile.classList.remove("anim-on", "anim-off"), FLIP_MS - anim.elapsed);
   return el(
     "div",
     {
@@ -52,17 +68,7 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
       style: cell.period > 0 ? `background:${SUBSTRATE_COLORS[cell.period] ?? "#555"}` : "",
       onclick,
     },
-    el("div", { class: tileClasses.join(" "), title: cell.type, style: anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms` : "" }, [
-      el("div", { class: "base" }),
-      el("div", { class: "face" }, [
-        el("div", { class: "light" }, el("div", { class: "light-inner" })),
-        cell.period > 0 ? el("span", { class: "counter", textContent: cell.counter }) : null,
-        linkIndex !== null && linkIndex !== -1
-          ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
-          : null,
-        order !== null ? el("span", { class: "order", textContent: order }) : null,
-      ]),
-    ]),
+    tile,
   );
 }
 

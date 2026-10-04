@@ -150,9 +150,18 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .base, .base::after { position: absolute; inset: 7.5% 0 0 0; border-radius: var(--round); background: #221b28; }
 .base::after { content: ""; inset: 0; background: #b84a12; opacity: 0; }
 .tile.flipped .base::after { opacity: 1; }
-.face { position: absolute; inset: 0 0 10% 0; border-radius: var(--round); clip-path: inset(0 round var(--round)); }
+.face {
+  --face: var(--tile);
+  position: absolute;
+  inset: 0 0 10% 0;
+  border-radius: var(--round);
+  clip-path: inset(0 round var(--round));
+  background: linear-gradient(#ffffff2e 0 2.8%, transparent 2.8%), var(--face);
+}
+.tile.nf .face { --face: #3b3447; }
 .tile.flipped .face { transform: translateY(var(--press)); }
-/* the light is a circle covering the face that scales up from the centre; its content is scaled back by the same amount so it stays still */
+/* the lit colour is a plain disc that grows from the centre over the unlit face. the texture lies on top of both and never moves,
+   so a flip only scales a plain disc and fades the glow, and nothing has to be redrawn while it runs */
 .light {
   position: absolute;
   left: 50%;
@@ -160,66 +169,45 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   width: 135cqw;
   height: 135cqw;
   margin: -67.5cqw 0 0 -67.5cqw;
-  clip-path: circle(50%);
-  opacity: 0;
-  transform: scale(0.03);
+  border-radius: 50%;
+  background: var(--flipped);
+  transform: scale(0);
 }
-.light-inner { position: absolute; left: 50%; top: 50%; width: 100cqw; height: 90cqh; margin: -45cqh 0 0 -50cqw; }
-.tile.flipped .light, .tile.flipped .light-inner { opacity: 1; transform: none; }
-.face, .light-inner {
-  --face: var(--tile);
-  background:
-    linear-gradient(#ffffff2e 0 2.8%, transparent 2.8%),
-    radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024),
-    url("grain.png"),
-    var(--face);
-  background-size: auto, auto, 100% auto, auto;
-  background-position: 0 0;
-  background-repeat: no-repeat;
-  background-blend-mode: normal, normal, overlay, normal;
-}
-.tile.nf .face { --face: #3b3447; }
-.light-inner {
-  --face: var(--flipped);
+.grain, .shade, .glow { position: absolute; inset: 0; }
+.grain { background: url("grain.png") 0 0 / 100% auto no-repeat; mix-blend-mode: overlay; }
+.shade { background: radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024); }
+/* the lit face's dark top edge and inner glow */
+.glow {
   border-radius: var(--round);
+  background: linear-gradient(#0000002e 0 3.5%, transparent 3.5%);
   box-shadow: inset 0 0 6cqw 2cqw #ffffff59;
-  background-image:
-    linear-gradient(#0000002e 0 3.5%, transparent 3.5%),
-    radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024),
-    url("grain.png");
+  opacity: 0;
 }
-.tile.ns .face, .tile.ns .light-inner {
+.tile.flipped .light { transform: none; }
+.tile.flipped .glow { opacity: 1; }
+.tile.ns .grain { display: none; }
+.tile.ns .shade {
   background:
-    linear-gradient(#ffffff2e 0 2.8%, transparent 2.8%),
-    linear-gradient(#ffffff2e, transparent 55%),
-    repeating-linear-gradient(45deg, #ffffff12 0 9.06cqw, transparent 9.06cqw 18.12cqw),
-    var(--face);
-}
-.tile.ns .light-inner {
-  background-image:
-    linear-gradient(#0000002e 0 3.5%, transparent 3.5%),
     linear-gradient(#ffffff2e, transparent 55%),
     repeating-linear-gradient(45deg, #ffffff12 0 9.06cqw, transparent 9.06cqw 18.12cqw);
 }
 
-/* flip: pushed in over the first 31%, the light spreads from 23% on; unflip runs the other way.
-   the light keyframes come from tools/light_keyframes.py: scale steps of at most 1.2x keep the content's counter-scale within 1% */
-.tile:is(.anim-on, .anim-off) :is(.face, .light, .light-inner),
+/* flip: pushed in over the first 31%, the light spreads from 23% on (ease-out) and the glow fades in as it reaches the edges;
+   unflip runs the other way */
+.tile:is(.anim-on, .anim-off) :is(.face, .light, .glow),
 .tile:is(.anim-on, .anim-off) .base::after {
   animation-duration: 700ms;
   animation-delay: var(--anim-delay, 0ms);
   animation-fill-mode: both;
-  will-change: transform, opacity;
 }
-.tile:is(.anim-on, .anim-off) :is(.light, .light-inner) { animation-timing-function: linear; }
 .tile.anim-on .base::after { animation-name: base-on; }
 .tile.anim-on .face { animation-name: press-in; }
 .tile.anim-on .light { animation-name: light-on; }
-.tile.anim-on .light-inner { animation-name: light-on-inner; }
+.tile.anim-on .glow { animation-name: glow-on; }
 .tile.anim-off .base::after { animation-name: base-off; }
 .tile.anim-off .face { animation-name: press-out; }
 .tile.anim-off .light { animation-name: light-off; }
-.tile.anim-off .light-inner { animation-name: light-off-inner; }
+.tile.anim-off .glow { animation-name: glow-off; }
 @keyframes press-in {
   0% { transform: translateY(0); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
   31%, 100% { transform: translateY(var(--press)); }
@@ -237,100 +225,20 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   45%, 100% { opacity: 0; }
 }
 @keyframes light-on {
-  0% { opacity: 0; transform: scale(0.03); }
-  23.8% { opacity: 0; transform: scale(0.0300); }
-  23.9% { opacity: 1; transform: scale(0.0360); }
-  24.1% { opacity: 1; transform: scale(0.0432); }
-  24.4% { opacity: 1; transform: scale(0.0518); }
-  24.6% { opacity: 1; transform: scale(0.0622); }
-  25% { opacity: 1; transform: scale(0.0746); }
-  25.4% { opacity: 1; transform: scale(0.0896); }
-  25.9% { opacity: 1; transform: scale(0.1075); }
-  26.5% { opacity: 1; transform: scale(0.1290); }
-  27.2% { opacity: 1; transform: scale(0.1548); }
-  28.1% { opacity: 1; transform: scale(0.1858); }
-  29.2% { opacity: 1; transform: scale(0.2229); }
-  30.6% { opacity: 1; transform: scale(0.2675); }
-  32.3% { opacity: 1; transform: scale(0.3210); }
-  34.5% { opacity: 1; transform: scale(0.3852); }
-  37.4% { opacity: 1; transform: scale(0.4622); }
-  41.2% { opacity: 1; transform: scale(0.5547); }
-  46.6% { opacity: 1; transform: scale(0.6656); }
-  54.9% { opacity: 1; transform: scale(0.7987); }
-  73.3% { opacity: 1; transform: scale(0.9584); }
-  100% { opacity: 1; transform: scale(1.0000); }
-}
-@keyframes light-on-inner {
-  0% { transform: scale(33.333); }
-  23.8% { transform: scale(33.3333); }
-  23.9% { transform: scale(27.7778); }
-  24.1% { transform: scale(23.1481); }
-  24.4% { transform: scale(19.2901); }
-  24.6% { transform: scale(16.0751); }
-  25% { transform: scale(13.3959); }
-  25.4% { transform: scale(11.1633); }
-  25.9% { transform: scale(9.3027); }
-  26.5% { transform: scale(7.7523); }
-  27.2% { transform: scale(6.4602); }
-  28.1% { transform: scale(5.3835); }
-  29.2% { transform: scale(4.4863); }
-  30.6% { transform: scale(3.7386); }
-  32.3% { transform: scale(3.1155); }
-  34.5% { transform: scale(2.5962); }
-  37.4% { transform: scale(2.1635); }
-  41.2% { transform: scale(1.8029); }
-  46.6% { transform: scale(1.5024); }
-  54.9% { transform: scale(1.2520); }
-  73.3% { transform: scale(1.0434); }
-  100% { transform: scale(1.0000); }
+  0%, 23% { transform: scale(0); animation-timing-function: cubic-bezier(.33, 1, .68, 1); }
+  100% { transform: scale(1); }
 }
 @keyframes light-off {
-  0% { opacity: 1; transform: scale(1.0000); }
-  15.6% { opacity: 1; transform: scale(0.9584); }
-  26.4% { opacity: 1; transform: scale(0.7987); }
-  31.2% { opacity: 1; transform: scale(0.6656); }
-  34.4% { opacity: 1; transform: scale(0.5547); }
-  36.6% { opacity: 1; transform: scale(0.4622); }
-  38.3% { opacity: 1; transform: scale(0.3852); }
-  39.6% { opacity: 1; transform: scale(0.3210); }
-  40.6% { opacity: 1; transform: scale(0.2675); }
-  41.4% { opacity: 1; transform: scale(0.2229); }
-  42% { opacity: 1; transform: scale(0.1858); }
-  42.5% { opacity: 1; transform: scale(0.1548); }
-  43% { opacity: 1; transform: scale(0.1290); }
-  43.3% { opacity: 1; transform: scale(0.1075); }
-  43.6% { opacity: 1; transform: scale(0.0896); }
-  43.9% { opacity: 1; transform: scale(0.0746); }
-  44% { opacity: 1; transform: scale(0.0622); }
-  44.2% { opacity: 1; transform: scale(0.0518); }
-  44.3% { opacity: 1; transform: scale(0.0432); }
-  44.5% { opacity: 1; transform: scale(0.0360); }
-  44.5% { opacity: 0; transform: scale(0.0300); }
-  100% { opacity: 0; transform: scale(0.03); }
+  0% { transform: scale(1); animation-timing-function: cubic-bezier(.32, 0, .67, 0); }
+  45%, 100% { transform: scale(0); }
 }
-@keyframes light-off-inner {
-  0% { transform: scale(1.0000); }
-  15.6% { transform: scale(1.0434); }
-  26.4% { transform: scale(1.2520); }
-  31.2% { transform: scale(1.5024); }
-  34.4% { transform: scale(1.8029); }
-  36.6% { transform: scale(2.1635); }
-  38.3% { transform: scale(2.5962); }
-  39.6% { transform: scale(3.1155); }
-  40.6% { transform: scale(3.7386); }
-  41.4% { transform: scale(4.4863); }
-  42% { transform: scale(5.3835); }
-  42.5% { transform: scale(6.4602); }
-  43% { transform: scale(7.7523); }
-  43.3% { transform: scale(9.3027); }
-  43.6% { transform: scale(11.1633); }
-  43.9% { transform: scale(13.3959); }
-  44% { transform: scale(16.0751); }
-  44.2% { transform: scale(19.2901); }
-  44.3% { transform: scale(23.1481); }
-  44.5% { transform: scale(27.7778); }
-  44.5% { transform: scale(33.3333); }
-  100% { transform: scale(33.333); }
+@keyframes glow-on {
+  0%, 45% { opacity: 0; }
+  80%, 100% { opacity: 1; }
+}
+@keyframes glow-off {
+  0% { opacity: 1; }
+  30%, 100% { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tile *, .tile *::after { animation: none !important; }
