@@ -52,8 +52,7 @@ function renderCell(cell, { classes = [], order = null, onclick }) {
       style: cell.period > 0 ? `background:${SUBSTRATE_COLORS[cell.period] ?? "#555"}` : "",
       onclick,
     },
-    el("div", { class: tileClasses.join(" ") }, [
-      cell.type,
+    el("div", { class: tileClasses.join(" "), title: cell.type }, [
       cell.period > 0 ? el("span", { class: "counter", textContent: cell.counter }) : null,
       linkIndex !== null && linkIndex !== -1
         ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
