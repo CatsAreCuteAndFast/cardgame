@@ -706,7 +706,7 @@ function renderPalette(data) {
     for (const tile of catalog.tiles) {
       palette.append(
         el("button", { class: "chip" + (brush.tiles === tile.id ? " active" : ""), onclick: () => ((brush.tiles = tile.id), render()) }, [
-          el("span", { class: "swatch", style: `background:var(--tile)${tile.can_flip ? "" : ";background-image:repeating-linear-gradient(45deg,#0000 0 3px,#0004 3px 6px)"}` }),
+          el("span", { class: "swatch", style: `background:${tile.can_flip ? "var(--tile)" : "#3b3447"}${tile.can_swap ? "" : ";background-image:repeating-linear-gradient(45deg,#fff3 0 3px,#0000 3px 6px)"}` }),
           tile.id,
         ]),
       );

@@ -38,12 +38,16 @@ function setBoardShape(board, width, height) {
   board.style.setProperty("--rows", height);
 }
 
-function renderCell(cell, { classes = [], order = null, onclick }) {
+const FLIP_MS = 700;
+
+// anim: { on, elapsed } plays the press-and-light (or reverse) animation, already elapsed ms in
+function renderCell(cell, { classes = [], order = null, onclick, anim = null }) {
   const tileType = catalog.tiles.find((tile) => tile.id === cell.type);
   const tileClasses = ["tile"];
   if (cell.flipped) tileClasses.push("flipped");
   if (tileType && !tileType.can_flip) tileClasses.push("nf");
   if (tileType && !tileType.can_swap) tileClasses.push("ns");
+  if (anim) tileClasses.push(anim.on ? "anim-on" : "anim-off");
   const linkIndex = typeof cell.link === "string" ? Number(cell.link) : cell.link;
   return el(
     "div",
@@ -52,14 +56,35 @@ function renderCell(cell, { classes = [], order = null, onclick }) {
       style: cell.period > 0 ? `background:${SUBSTRATE_COLORS[cell.period] ?? "#555"}` : "",
       onclick,
     },
-    el("div", { class: tileClasses.join(" "), title: cell.type }, [
-      cell.period > 0 ? el("span", { class: "counter", textContent: cell.counter }) : null,
-      linkIndex !== null && linkIndex !== -1
-        ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
-        : null,
-      order !== null ? el("span", { class: "order", textContent: order }) : null,
+    el("div", { class: tileClasses.join(" "), title: cell.type, style: anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms` : "" }, [
+      el("div", { class: "face" }, [
+        el("div", { class: "light" }),
+        cell.period > 0 ? el("span", { class: "counter", textContent: cell.counter }) : null,
+        linkIndex !== null && linkIndex !== -1
+          ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
+          : null,
+        order !== null ? el("span", { class: "order", textContent: order }) : null,
+      ]),
     ]),
   );
+}
+
+// per board: last flipped state and when each tile last changed, so a flip animates across re-renders.
+// only a one-play step (a play, undo or redo) animates; loading, reset or another level just shows the result
+const flipHistory = new WeakMap();
+
+function flipAnimations(board, snap) {
+  const now = performance.now();
+  const prev = flipHistory.get(board);
+  const step = prev && prev.width === snap.width && prev.height === snap.height;
+  const animate = step && Math.abs(prev.plays - snap.plays) === 1;
+  const changedAt = snap.cells.map((cell, i) => {
+    if (!step) return -Infinity;
+    if (cell.flipped === prev.flipped[i]) return prev.changedAt[i];
+    return animate ? now : -Infinity;
+  });
+  flipHistory.set(board, { width: snap.width, height: snap.height, plays: snap.plays, flipped: snap.cells.map((cell) => cell.flipped), changedAt });
+  return snap.cells.map((cell, i) => (now - changedAt[i] < FLIP_MS ? { on: cell.flipped, elapsed: now - changedAt[i] } : null));
 }
 
 const CARD_FACES = {
@@ -186,6 +211,7 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   const pickingTiles = snap.targeting && card?.kind !== "card";
   setBoardShape(board, snap.width, snap.height);
   board.classList.toggle("swipe", canSwipe(snap));
+  const anims = flipAnimations(board, snap);
   snap.cells.forEach((cell, index) => {
     const row = Math.floor(index / snap.width);
     const col = index % snap.width;
@@ -195,6 +221,7 @@ function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     else if (candidate) classes.push(snap.targeting ? "targeting" : "candidate");
     const node = renderCell(cell, {
       classes,
+      anim: anims[index],
       onclick: (e) => {
         e.stopPropagation();
         if (pickingTiles && !candidate) shake(e.currentTarget);

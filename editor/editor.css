@@ -7,8 +7,8 @@
   --accent: #6b8fd6;
   --good: #5fb37a;
   --bad: #e06c6c;
-  --tile: #c8c8c8;
-  --flipped: #963028;
+  --tile: #4f4560;
+  --flipped: #ff8a3d;
   --candidate: #8ca0c8;
   --targeting: #647dbe;
   --picked: #e0a040;
@@ -135,30 +135,97 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   cursor: pointer;
 }
 
+/* a tile is a key: the face sits on a base and is pushed in (by 12/160 of the tile) and lit when flipped */
+@property --base { syntax: "<color>"; inherits: true; initial-value: #221b28; }
 .tile {
+  --base: #221b28;
+  --face: var(--tile);
+  --press: 8.333%;
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 6px;
-  background: var(--tile);
-  color: #111;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: min(13cqw, 1.3rem);
+  border-radius: 12.5%;
+  background: linear-gradient(transparent 8%, var(--base) 8%);
+  color: #fff;
   line-height: 1.1;
-  overflow: hidden;
-  word-break: break-all;
-  box-shadow: inset 0 0 0 0 transparent;
+}
+.tile.nf { --face: #3b3447; }
+.tile.flipped { --base: #b84a12; }
+.face, .light { position: absolute; border-radius: 12.5% / 13.9%; overflow: hidden; }
+.face { inset: 0 0 10% 0; }
+.light { inset: 0; clip-path: circle(0% at 50% 50%); }
+.tile.flipped .face { transform: translateY(var(--press)); }
+.tile.flipped .light { clip-path: circle(75% at 50% 50%); }
+.face, .light {
+  background:
+    linear-gradient(#ffffff2e 0 2.8%, transparent 2.8%),
+    radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='2' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+    var(--face);
+  background-size: auto, auto, 160px 160px, auto;
+  background-blend-mode: normal, normal, overlay, normal;
+}
+.light {
+  --face: var(--flipped);
+  box-shadow: inset 0 0 6cqw 2cqw #ffffff59;
+  background-image:
+    linear-gradient(#0000002e 0 3.5%, transparent 3.5%),
+    radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='2' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+.tile.ns .face, .tile.ns .light {
+  background:
+    linear-gradient(#ffffff2e 0 2.8%, transparent 2.8%),
+    linear-gradient(#ffffff2e, transparent 55%),
+    repeating-linear-gradient(45deg, #ffffff24 0 7.8cqw, transparent 7.8cqw 15.6cqw),
+    var(--face);
+}
+.tile.ns .light {
+  background-image:
+    linear-gradient(#0000002e 0 3.5%, transparent 3.5%),
+    linear-gradient(#ffffff2e, transparent 55%),
+    repeating-linear-gradient(45deg, #ffffff24 0 7.8cqw, transparent 7.8cqw 15.6cqw);
 }
 
-.tile.flipped { background: var(--flipped); color: #fff; }
-.tile.nf { background-image: repeating-linear-gradient(45deg, #0000 0 7cqw, #0000002e 7cqw 14cqw); }
-.tile.ns {
-  background-image: radial-gradient(circle, #00000038 0 22%, #0000 26%);
-  background-size: 25% 25%;
-  background-position: center;
+/* flip: pushed in over the first 28%, then the light spreads from the centre; unflip runs the other way */
+.tile.anim-on, .tile.anim-on .face, .tile.anim-on .light,
+.tile.anim-off, .tile.anim-off .face, .tile.anim-off .light {
+  animation-duration: 700ms;
+  animation-delay: var(--anim-delay, 0ms);
+  animation-fill-mode: both;
+}
+.tile.anim-on { animation-name: base-on; }
+.tile.anim-on .face { animation-name: press-in; }
+.tile.anim-on .light { animation-name: light-on; }
+.tile.anim-off { animation-name: base-off; }
+.tile.anim-off .face { animation-name: press-out; }
+.tile.anim-off .light { animation-name: light-off; }
+@keyframes press-in {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+  28%, 100% { transform: translateY(var(--press)); }
+}
+@keyframes light-on {
+  0%, 28% { clip-path: circle(0% at 50% 50%); animation-timing-function: cubic-bezier(.2, .6, .3, 1); }
+  100% { clip-path: circle(75% at 50% 50%); }
+}
+@keyframes base-on {
+  0%, 28% { --base: #221b28; }
+  70%, 100% { --base: #b84a12; }
+}
+@keyframes light-off {
+  0% { clip-path: circle(75% at 50% 50%); animation-timing-function: cubic-bezier(.5, 0, .8, .4); }
+  45%, 100% { clip-path: circle(0% at 50% 50%); }
+}
+@keyframes press-out {
+  0%, 45% { transform: translateY(var(--press)); animation-timing-function: cubic-bezier(.3, 0, .2, 1.3); }
+  80%, 100% { transform: translateY(0); }
+}
+@keyframes base-off {
+  0% { --base: #b84a12; }
+  45%, 100% { --base: #221b28; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile, .tile .face, .tile .light { animation: none !important; }
 }
 
 .counter, .link, .order {
@@ -192,17 +259,18 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   text-align: center;
 }
 
-.cell.candidate .tile { outline: 9px solid var(--candidate); outline-offset: -9px; }
-.cell.targeting .tile { outline: 9px solid var(--targeting); outline-offset: -9px; }
-.cell.picked .tile { outline: 12px solid var(--picked); outline-offset: -12px; }
-.cell.coord-on .tile { outline: 12px solid var(--picked); outline-offset: -12px; }
+.face::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.cell.candidate .face::after { box-shadow: inset 0 0 0 9px var(--candidate); }
+.cell.targeting .face::after { box-shadow: inset 0 0 0 9px var(--targeting); }
+.cell.picked .face::after,
+.cell.coord-on .face::after { box-shadow: inset 0 0 0 12px var(--picked); }
 .board.swipe { touch-action: none; }
 .board.dragging {
   outline: 3px dashed color-mix(in srgb, var(--picked) calc(var(--drag, 0) * 100%), transparent);
   outline-offset: 4px;
   border-radius: 8px;
 }
-.board.dragging .cell.targeting .tile { outline-color: color-mix(in srgb, var(--targeting) calc(var(--drag, 0) * 100%), transparent); }
+.board.dragging .cell.targeting .face::after { box-shadow: inset 0 0 0 9px color-mix(in srgb, var(--targeting) calc(var(--drag, 0) * 100%), transparent); }
 .board.dragging .cell.preview .tile::before { opacity: calc(var(--drag, 0) * .6); }
 .board.dragging .cell.preview-outline .tile::before,
 .board.dragging .cell.blocked .tile::after { opacity: var(--drag, 0); }
@@ -210,6 +278,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .cell.preview .tile::before,
 .cell.preview-outline .tile::before {
   content: "";
+  z-index: 2;
   position: absolute;
   inset: 0;
   border: 4px dashed #fff;
@@ -220,6 +289,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .cell.preview .tile.flipped::before { background: var(--tile); }
 .cell.blocked .tile::after {
   content: "✕";
+  z-index: 2;
   position: absolute;
   inset: 0;
   display: flex;
