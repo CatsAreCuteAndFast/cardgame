@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: cards now fit the ember-orange tiles, as Drifl asked. The beige card body became a tile-style key (purple `--tile` face with the grain and shading of the tiles, on a dark `#221b28` edge), headers moved into the tile palette (Flip all #c4561a, Flip one #e8792f, Swap lavender #8a74b8, Retarget rose #b0558a, with a soft top highlight), mini-map squares are dark like unlit tiles, and the single-use frame and copy tag were recoloured to match.
+
 - **2026-10-04**: tapping the selected Retarget card again now deselects it, like tile cards (it used to be ignored, leaving only Cancel). Also fixed two stale spots in CLAUDE.md: the card details UI is in `editor/edit.js` since the editor split, and a game is `{state, phase, move}`.
 
 - **2026-10-04**: a folder's Copy in the editor now warns, listing them, when some of its levels are invalid or have no working solution, because pasting them into `levels/pack.json` would make the tests fail (Copy all, used for backups, doesn't warn). Clone now keeps the level's saved solution; the Edit tab shows whether it still works after changes.

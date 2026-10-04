@@ -85,11 +85,11 @@ function flipAnimations(board, snap) {
 }
 
 const CARD_FACES = {
-  "flip:fixed": { icon: "↻", name: "Flip all", color: "#963028" },
-  "flip:from": { icon: "↻", name: "Flip one", color: "#c8602a" },
-  flip: { icon: "↻", name: "Flip", color: "#963028" },
-  swap: { icon: "⇄", name: "Swap", color: "#2e6da4" },
-  retarget: { icon: "✎", name: "Retarget", color: "#6a4a9a" },
+  "flip:fixed": { icon: "↻", name: "Flip all", color: "#c4561a" },
+  "flip:from": { icon: "↻", name: "Flip one", color: "#e8792f" },
+  flip: { icon: "↻", name: "Flip", color: "#c4561a" },
+  swap: { icon: "⇄", name: "Swap", color: "#8a74b8" },
+  retarget: { icon: "✎", name: "Retarget", color: "#b0558a" },
 };
 
 function cardFace(effect, kind) {
