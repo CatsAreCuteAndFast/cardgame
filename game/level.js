@@ -41,7 +41,7 @@ function card(data, index, width, height) {
   if (typeof data !== "object" || data === null) throw new Error(`${what} is not an object`);
   if (!has(EFFECTS, data.effect)) throw new Error(`${what} has unknown effect ${JSON.stringify(data.effect)}`);
   const target = parseTarget(data.target, what);
-  if (!EFFECTS[data.effect].accepts(target)) throw new Error(`${what}: ${data.effect} can't use a ${target.kind} target`);
+  if (!EFFECTS[data.effect].accepts(target)) throw new Error(`${what}: ${data.effect} can't use target kind "${target.kind}"`);
   TARGETS[target.kind].check(target, width, height, what);
   return { effect: data.effect, target, single_use: Boolean(data.single_use), copy: false };
 }

@@ -30,7 +30,7 @@ function writeStorage(key, value) {
 function callBridge(call) {
   try {
     playError = null;
-    return JSON.parse(call());
+    return call();
   } catch (error) {
     playError = String(error.message ?? error);
     return null;
@@ -41,7 +41,7 @@ function startLevel(next) {
   index = next;
   playError = null;
   writeStorage(LAST_KEY, pack[index].name);
-  snap = bridge ? callBridge(() => bridge.start(JSON.stringify(pack[index].level))) : null;
+  snap = bridge ? callBridge(() => bridge.start(pack[index].level)) : null;
 }
 
 function tap(call) {
@@ -56,7 +56,7 @@ function tap(call) {
 
 function peek(i) {
   try {
-    return JSON.parse(bridge.peek(i));
+    return bridge.peek(i);
   } catch {
     return null;
   }
@@ -123,8 +123,8 @@ function renderPlay() {
     return;
   }
   renderSnapshot(snap, board, hand, {
-    onTile: (row, col) => tap(() => bridge.tap_tile(row, col)),
-    onCard: (i) => tap(() => bridge.tap_card(i)),
+    onTile: (row, col) => tap(() => bridge.tapTile(row, col)),
+    onCard: (i) => tap(() => bridge.tapCard(i)),
   });
 }
 
@@ -140,7 +140,9 @@ function toast(message, sticky = false) {
 
 async function loadPack() {
   try {
-    const data = JSON.parse(await fetchText(PACK_PATH));
+    const response = await fetch(PACK_PATH, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`couldn't fetch ${PACK_PATH} (${response.status})`);
+    const data = await response.json();
     if (!Array.isArray(data)) throw new Error("the level pack should be a list");
     pack = data.filter((entry) => entry && typeof entry.name === "string" && entry.level);
   } catch (error) {
@@ -153,11 +155,10 @@ async function loadPack() {
 }
 
 async function loadRules() {
-  toast("Loading game rules…", true);
   try {
-    bridge = await loadBridge("../editor/");
-    catalog = JSON.parse(bridge.catalog());
-    toast("Rules loaded");
+    bridge = await import("../editor/bridge.js");
+    catalog = bridge.catalog();
+    $("loading").hidden = true;
   } catch (error) {
     console.error(error);
     toast("Couldn't load rules: " + (error.message ?? error), true);
@@ -187,16 +188,16 @@ function init() {
     render();
     window.scrollTo(0, 0);
   });
-  $("play-cancel").addEventListener("click", (e) => (e.stopPropagation(), tap(() => bridge.tap_nothing())));
+  $("play-cancel").addEventListener("click", (e) => (e.stopPropagation(), tap(() => bridge.tapNothing())));
   $("play").addEventListener("click", (e) => {
     if (e.target.closest("button, .cell")) return;
-    tap(() => bridge.tap_nothing());
+    tap(() => bridge.tapNothing());
   });
   attachPlayInput($("play-board"), $("play-hand"), {
     snap: () => snap,
-    card: (i) => tap(() => bridge.tap_card(i)),
-    tile: (row, col) => tap(() => bridge.tap_tile(row, col)),
-    nothing: () => tap(() => bridge.tap_nothing()),
+    card: (i) => tap(() => bridge.tapCard(i)),
+    tile: (row, col) => tap(() => bridge.tapTile(row, col)),
+    nothing: () => tap(() => bridge.tapNothing()),
     peek: (i) => peek(i),
     render,
   });

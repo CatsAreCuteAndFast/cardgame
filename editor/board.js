@@ -437,11 +437,13 @@ function isNeighbour([r1, c1], [r2, c2]) {
   return Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1;
 }
 
-// phones keep the page's own html/js/css cached; refetch them from the network so the reload picks up a new deploy
+// phones keep the page's own files cached; refetch them from the network so the reload picks up a new deploy
 async function hardReload(button) {
   button.disabled = true;
   const urls = [location.href.split("#")[0]];
   for (const node of document.querySelectorAll("script[src], link[rel=stylesheet]")) urls.push(node.src || node.href);
+  // includes the rules modules, which are imported rather than listed as script tags
+  for (const entry of performance.getEntriesByType("resource")) urls.push(entry.name);
   const own = urls.filter((url) => new URL(url).origin === location.origin);
   await Promise.allSettled(own.map((url) => fetch(url, { cache: "reload" })));
   location.reload();

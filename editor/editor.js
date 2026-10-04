@@ -317,7 +317,7 @@ function normalizeLevel(raw) {
 
 function validationError(data) {
   if (!bridge) return null;
-  return bridge.validate(JSON.stringify(data)) ?? null;
+  return bridge.validate(data);
 }
 
 // ---------- editing ----------
@@ -861,13 +861,13 @@ function startPlay() {
   else if (!bridge) playError = "Rules are still loading…";
   else {
     playError = validationError(level.data);
-    if (!playError) playSnapshot = callBridge(() => bridge.start(playLevelJson));
+    if (!playError) playSnapshot = callBridge(() => bridge.start(level.data));
   }
 }
 
 function callBridge(call) {
   try {
-    return JSON.parse(call());
+    return call();
   } catch (error) {
     playError = String(error.message ?? error);
     return null;
@@ -900,8 +900,8 @@ function renderPlay() {
   status.textContent = text;
   status.className = className;
   renderSnapshot(snap, board, hand, {
-    onTile: (row, col) => playTap(() => bridge.tap_tile(row, col)),
-    onCard: (index) => playTap(() => bridge.tap_card(index)),
+    onTile: (row, col) => playTap(() => bridge.tapTile(row, col)),
+    onCard: (index) => playTap(() => bridge.tapCard(index)),
   });
 }
 
@@ -984,13 +984,12 @@ function setTab(name) {
 }
 
 async function loadRules() {
-  toast("Loading game rules…", true);
   try {
-    bridge = await loadBridge();
-    catalog = JSON.parse(bridge.catalog());
+    bridge = await import("./bridge.js");
+    catalog = bridge.catalog();
+    $("loading").hidden = true;
     brush.tiles = catalog.tiles[0].id;
     brush.substrates = catalog.substrates[0].id;
-    toast("Rules loaded");
   } catch (error) {
     console.error(error);
     toast("Couldn't load rules: " + (error.message ?? error), true);
@@ -1052,20 +1051,20 @@ function init() {
   });
   $("play-cancel").addEventListener("click", (e) => {
     e.stopPropagation();
-    playTap(() => bridge.tap_nothing());
+    playTap(() => bridge.tapNothing());
   });
   $("play").addEventListener("click", (e) => {
     if (e.target.closest("button, .cell")) return;
-    playTap(() => bridge.tap_nothing());
+    playTap(() => bridge.tapNothing());
   });
   attachPlayInput($("play-board"), $("play-hand"), {
     snap: () => playSnapshot,
-    card: (index) => playTap(() => bridge.tap_card(index)),
-    tile: (row, col) => playTap(() => bridge.tap_tile(row, col)),
-    nothing: () => playTap(() => bridge.tap_nothing()),
+    card: (index) => playTap(() => bridge.tapCard(index)),
+    tile: (row, col) => playTap(() => bridge.tapTile(row, col)),
+    nothing: () => playTap(() => bridge.tapNothing()),
     peek: (index) => {
       try {
-        return JSON.parse(bridge.peek(index));
+        return bridge.peek(index);
       } catch {
         return null;
       }
