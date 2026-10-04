@@ -135,29 +135,39 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   cursor: pointer;
 }
 
-/* a tile is a key: the face sits on a base and is pushed in (by 12/160 of the tile) and lit when flipped */
-@property --base { syntax: "<color>"; inherits: true; initial-value: #221b28; }
+/* a tile is a key: the face sits on a base and is pushed in (by 12/160 of the tile) and lit when flipped.
+   only transform and opacity animate, so phones can run the flip on the GPU */
 .tile {
-  --base: #221b28;
-  --face: var(--tile);
   --press: 8.333%;
+  --round: 12.5cqw;
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 12.5%;
   container-type: size;
   color: #fff;
   line-height: 1.1;
 }
-.tile.nf { --face: #3b3447; }
-.tile.flipped { --base: #b84a12; }
-.face, .light { position: absolute; border-radius: 12.5% / 13.9%; overflow: hidden; }
-/* the base is a copy of the face's shape, 16/160 of the tile lower (4/160 when pushed in) */
-.face { inset: 0 0 10% 0; box-shadow: 0 10cqh 0 var(--base); }
-.light { inset: 0; clip-path: circle(0% at 50% 50%); }
-.tile.flipped .face { transform: translateY(var(--press)); box-shadow: 0 2.5cqh 0 var(--base); }
-.tile.flipped .light { clip-path: circle(75% at 50% 50%); }
-.face, .light {
+.base, .base::after { position: absolute; inset: 7.5% 0 0 0; border-radius: var(--round); background: #221b28; }
+.base::after { content: ""; inset: 0; background: #b84a12; opacity: 0; }
+.tile.flipped .base::after { opacity: 1; }
+.face { position: absolute; inset: 0 0 10% 0; border-radius: var(--round); clip-path: inset(0 round var(--round)); }
+.tile.flipped .face { transform: translateY(var(--press)); }
+/* the light is a circle covering the face that scales up from the centre; its content is scaled back by the same amount so it stays still */
+.light {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 135cqw;
+  height: 135cqw;
+  margin: -67.5cqw 0 0 -67.5cqw;
+  clip-path: circle(50%);
+  opacity: 0;
+  transform: scale(0.03);
+}
+.light-inner { position: absolute; left: 50%; top: 50%; width: 100cqw; height: 90cqh; margin: -45cqh 0 0 -50cqw; }
+.tile.flipped .light, .tile.flipped .light-inner { opacity: 1; transform: none; }
+.face, .light-inner {
+  --face: var(--tile);
   background:
     linear-gradient(#ffffff2e 0 2.8%, transparent 2.8%),
     radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024),
@@ -168,67 +178,162 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   background-repeat: no-repeat;
   background-blend-mode: normal, normal, overlay, normal;
 }
-.light {
+.tile.nf .face { --face: #3b3447; }
+.light-inner {
   --face: var(--flipped);
+  border-radius: var(--round);
   box-shadow: inset 0 0 6cqw 2cqw #ffffff59;
   background-image:
     linear-gradient(#0000002e 0 3.5%, transparent 3.5%),
     radial-gradient(70% 70% at 50% 35%, #ffffff2e, #00000024),
     url("grain.png");
 }
-.tile.ns .face, .tile.ns .light {
+.tile.ns .face, .tile.ns .light-inner {
   background:
     linear-gradient(#ffffff2e 0 2.8%, transparent 2.8%),
     linear-gradient(#ffffff2e, transparent 55%),
     repeating-linear-gradient(45deg, #ffffff12 0 9.06cqw, transparent 9.06cqw 18.12cqw),
     var(--face);
 }
-.tile.ns .light {
+.tile.ns .light-inner {
   background-image:
     linear-gradient(#0000002e 0 3.5%, transparent 3.5%),
     linear-gradient(#ffffff2e, transparent 55%),
     repeating-linear-gradient(45deg, #ffffff12 0 9.06cqw, transparent 9.06cqw 18.12cqw);
 }
 
-/* flip: pushed in over the first 28%, then the light spreads from the centre; unflip runs the other way */
-.tile.anim-on, .tile.anim-on .face, .tile.anim-on .light,
-.tile.anim-off, .tile.anim-off .face, .tile.anim-off .light {
+/* flip: pushed in over the first 31%, the light spreads from 23% on; unflip runs the other way.
+   the light keyframes come from tools/light_keyframes.py: scale steps of at most 1.2x keep the content's counter-scale within 1% */
+.tile:is(.anim-on, .anim-off) :is(.face, .light, .light-inner),
+.tile:is(.anim-on, .anim-off) .base::after {
   animation-duration: 700ms;
   animation-delay: var(--anim-delay, 0ms);
   animation-fill-mode: both;
+  will-change: transform, opacity;
 }
-.tile.anim-on { animation-name: base-on; }
+.tile:is(.anim-on, .anim-off) :is(.light, .light-inner) { animation-timing-function: linear; }
+.tile.anim-on .base::after { animation-name: base-on; }
 .tile.anim-on .face { animation-name: press-in; }
 .tile.anim-on .light { animation-name: light-on; }
-.tile.anim-off { animation-name: base-off; }
+.tile.anim-on .light-inner { animation-name: light-on-inner; }
+.tile.anim-off .base::after { animation-name: base-off; }
 .tile.anim-off .face { animation-name: press-out; }
 .tile.anim-off .light { animation-name: light-off; }
+.tile.anim-off .light-inner { animation-name: light-off-inner; }
 @keyframes press-in {
-  0% { transform: translateY(0); box-shadow: 0 10cqh 0 var(--base); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
-  28%, 100% { transform: translateY(var(--press)); box-shadow: 0 2.5cqh 0 var(--base); }
-}
-@keyframes light-on {
-  0%, 28% { clip-path: circle(0% at 50% 50%); animation-timing-function: cubic-bezier(.2, .6, .3, 1); }
-  100% { clip-path: circle(75% at 50% 50%); }
-}
-@keyframes base-on {
-  0%, 28% { --base: #221b28; }
-  70%, 100% { --base: #b84a12; }
-}
-@keyframes light-off {
-  0% { clip-path: circle(75% at 50% 50%); animation-timing-function: cubic-bezier(.5, 0, .8, .4); }
-  45%, 100% { clip-path: circle(0% at 50% 50%); }
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+  31%, 100% { transform: translateY(var(--press)); }
 }
 @keyframes press-out {
-  0%, 45% { transform: translateY(var(--press)); box-shadow: 0 2.5cqh 0 var(--base); animation-timing-function: cubic-bezier(.3, 0, .2, 1.3); }
-  80%, 100% { transform: translateY(0); box-shadow: 0 10cqh 0 var(--base); }
+  0%, 40% { transform: translateY(var(--press)); animation-timing-function: cubic-bezier(.3, 0, .2, 1.3); }
+  80%, 100% { transform: translateY(0); }
+}
+@keyframes base-on {
+  0%, 23% { opacity: 0; }
+  75%, 100% { opacity: 1; }
 }
 @keyframes base-off {
-  0% { --base: #b84a12; }
-  45%, 100% { --base: #221b28; }
+  0% { opacity: 1; }
+  45%, 100% { opacity: 0; }
+}
+@keyframes light-on {
+  0% { opacity: 0; transform: scale(0.03); }
+  23.8% { opacity: 0; transform: scale(0.0300); }
+  23.9% { opacity: 1; transform: scale(0.0360); }
+  24.1% { opacity: 1; transform: scale(0.0432); }
+  24.4% { opacity: 1; transform: scale(0.0518); }
+  24.6% { opacity: 1; transform: scale(0.0622); }
+  25% { opacity: 1; transform: scale(0.0746); }
+  25.4% { opacity: 1; transform: scale(0.0896); }
+  25.9% { opacity: 1; transform: scale(0.1075); }
+  26.5% { opacity: 1; transform: scale(0.1290); }
+  27.2% { opacity: 1; transform: scale(0.1548); }
+  28.1% { opacity: 1; transform: scale(0.1858); }
+  29.2% { opacity: 1; transform: scale(0.2229); }
+  30.6% { opacity: 1; transform: scale(0.2675); }
+  32.3% { opacity: 1; transform: scale(0.3210); }
+  34.5% { opacity: 1; transform: scale(0.3852); }
+  37.4% { opacity: 1; transform: scale(0.4622); }
+  41.2% { opacity: 1; transform: scale(0.5547); }
+  46.6% { opacity: 1; transform: scale(0.6656); }
+  54.9% { opacity: 1; transform: scale(0.7987); }
+  73.3% { opacity: 1; transform: scale(0.9584); }
+  100% { opacity: 1; transform: scale(1.0000); }
+}
+@keyframes light-on-inner {
+  0% { transform: scale(33.333); }
+  23.8% { transform: scale(33.3333); }
+  23.9% { transform: scale(27.7778); }
+  24.1% { transform: scale(23.1481); }
+  24.4% { transform: scale(19.2901); }
+  24.6% { transform: scale(16.0751); }
+  25% { transform: scale(13.3959); }
+  25.4% { transform: scale(11.1633); }
+  25.9% { transform: scale(9.3027); }
+  26.5% { transform: scale(7.7523); }
+  27.2% { transform: scale(6.4602); }
+  28.1% { transform: scale(5.3835); }
+  29.2% { transform: scale(4.4863); }
+  30.6% { transform: scale(3.7386); }
+  32.3% { transform: scale(3.1155); }
+  34.5% { transform: scale(2.5962); }
+  37.4% { transform: scale(2.1635); }
+  41.2% { transform: scale(1.8029); }
+  46.6% { transform: scale(1.5024); }
+  54.9% { transform: scale(1.2520); }
+  73.3% { transform: scale(1.0434); }
+  100% { transform: scale(1.0000); }
+}
+@keyframes light-off {
+  0% { opacity: 1; transform: scale(1.0000); }
+  15.6% { opacity: 1; transform: scale(0.9584); }
+  26.4% { opacity: 1; transform: scale(0.7987); }
+  31.2% { opacity: 1; transform: scale(0.6656); }
+  34.4% { opacity: 1; transform: scale(0.5547); }
+  36.6% { opacity: 1; transform: scale(0.4622); }
+  38.3% { opacity: 1; transform: scale(0.3852); }
+  39.6% { opacity: 1; transform: scale(0.3210); }
+  40.6% { opacity: 1; transform: scale(0.2675); }
+  41.4% { opacity: 1; transform: scale(0.2229); }
+  42% { opacity: 1; transform: scale(0.1858); }
+  42.5% { opacity: 1; transform: scale(0.1548); }
+  43% { opacity: 1; transform: scale(0.1290); }
+  43.3% { opacity: 1; transform: scale(0.1075); }
+  43.6% { opacity: 1; transform: scale(0.0896); }
+  43.9% { opacity: 1; transform: scale(0.0746); }
+  44% { opacity: 1; transform: scale(0.0622); }
+  44.2% { opacity: 1; transform: scale(0.0518); }
+  44.3% { opacity: 1; transform: scale(0.0432); }
+  44.5% { opacity: 1; transform: scale(0.0360); }
+  44.5% { opacity: 0; transform: scale(0.0300); }
+  100% { opacity: 0; transform: scale(0.03); }
+}
+@keyframes light-off-inner {
+  0% { transform: scale(1.0000); }
+  15.6% { transform: scale(1.0434); }
+  26.4% { transform: scale(1.2520); }
+  31.2% { transform: scale(1.5024); }
+  34.4% { transform: scale(1.8029); }
+  36.6% { transform: scale(2.1635); }
+  38.3% { transform: scale(2.5962); }
+  39.6% { transform: scale(3.1155); }
+  40.6% { transform: scale(3.7386); }
+  41.4% { transform: scale(4.4863); }
+  42% { transform: scale(5.3835); }
+  42.5% { transform: scale(6.4602); }
+  43% { transform: scale(7.7523); }
+  43.3% { transform: scale(9.3027); }
+  43.6% { transform: scale(11.1633); }
+  43.9% { transform: scale(13.3959); }
+  44% { transform: scale(16.0751); }
+  44.2% { transform: scale(19.2901); }
+  44.3% { transform: scale(23.1481); }
+  44.5% { transform: scale(27.7778); }
+  44.5% { transform: scale(33.3333); }
+  100% { transform: scale(33.333); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tile, .tile .face, .tile .light { animation: none !important; }
+  .tile *, .tile *::after { animation: none !important; }
 }
 
 .counter, .link, .order {
@@ -262,7 +367,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   text-align: center;
 }
 
-.face::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.face::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1; }
 .cell.candidate .face::after { box-shadow: inset 0 0 0 9px var(--candidate); }
 .cell.targeting .face::after { box-shadow: inset 0 0 0 9px var(--targeting); }
 .cell.picked .face::after,

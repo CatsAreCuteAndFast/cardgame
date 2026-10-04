@@ -57,8 +57,9 @@ function renderCell(cell, { classes = [], order = null, onclick, anim = null }) 
       onclick,
     },
     el("div", { class: tileClasses.join(" "), title: cell.type, style: anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms` : "" }, [
+      el("div", { class: "base" }),
       el("div", { class: "face" }, [
-        el("div", { class: "light" }),
+        el("div", { class: "light" }, el("div", { class: "light-inner" })),
         cell.period > 0 ? el("span", { class: "counter", textContent: cell.counter }) : null,
         linkIndex !== null && linkIndex !== -1
           ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
