@@ -1,6 +1,7 @@
 // The Levels screen: folders, levels, and copying or importing them as JSON.
 
 import { $, el, toast } from "./board.js";
+import * as bridge from "./bridge.js";
 import { store, saveLevels, addLevel, folderById, folderByName, blankLevel, size, normalizeLevel } from "./store.js";
 import { copyText, showTextDialog } from "./dialogs.js";
 import { render, setTab } from "./editor.js";
@@ -31,7 +32,7 @@ export function renderLevels() {
           el("div", { class: "actions" }, [
             el("button", { class: "small", textContent: "+ Level", onclick: () => newLevel(folder.id) }),
             el("button", { class: "small", textContent: "Rename", onclick: () => renameFolder(folder) }),
-            el("button", { class: "small", textContent: "Copy", title: "Copy this folder's levels", onclick: () => copyLevels(inside, folder.name) }),
+            el("button", { class: "small", textContent: "Copy", title: "Copy this folder's levels", onclick: () => copyLevels(inside, folder.name, true) }),
             el("button", { class: "small danger", textContent: "✕", title: "Delete folder", onclick: () => deleteFolder(folder) }),
           ]),
         ]),
@@ -149,9 +150,13 @@ function moveLevel(level) {
   dialog.showModal();
 }
 
-// exports [{name, folder?, level, solution?}], the format of levels/pack.json
-function copyLevels(items, title) {
+// exports [{name, folder?, level, solution?}], the format of levels/pack.json.
+// forPack warns about levels that would fail the tests in the pack: invalid, or without a working solution
+function copyLevels(items, title, forPack = false) {
   if (!items.length) return toast("No levels to copy");
+  const unready = forPack ? items.filter((level) => bridge.validate(level.data) || bridge.checkSolution(level.data, level.solution).error) : [];
+  const names = unready.map((level) => `• ${level.name}`).join("\n");
+  if (unready.length && !confirm(`These levels are invalid or have no working solution, so the tests would fail with them in levels/pack.json:\n${names}\n\nCopy anyway?`)) return;
   const entries = items.map((level) => {
     const folder = folderById(level.folder);
     return { name: level.name, ...(folder ? { folder: folder.name } : {}), level: level.data, ...(level.solution ? { solution: level.solution } : {}) };
@@ -169,7 +174,9 @@ function renameLevel(level) {
 }
 
 function duplicateLevel(level) {
-  addLevel(level.name + " copy", structuredClone(level.data), level.folder);
+  const copy = addLevel(level.name + " copy", structuredClone(level.data), level.folder);
+  if (level.solution) copy.solution = structuredClone(level.solution);
+  saveLevels();
   render();
 }
 

@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: a folder's Copy in the editor now warns, listing them, when some of its levels are invalid or have no working solution, because pasting them into `levels/pack.json` would make the tests fail (Copy all, used for backups, doesn't warn). Clone now keeps the level's saved solution; the Edit tab shows whether it still works after changes.
+
 - **2026-10-04**: `legalMoves` explores each set of picked tiles once instead of every pick order, since what can be picked next depends only on the set (same moves, about 4× faster on a 6×6 `any 4` card; matters for the tests and a future solver). Also corrected the CLAUDE.md description of the move test, which stops at 200 positions per step.
 
 - **2026-10-04**: stricter level and solution checks. `parseLevel` now rejects a budget below 1, coords with extra numbers (`[0, 0, 7]` in links or flipped, 4-number counters; the Python rules rejected these too), target kinds that are inherited object keys such as `"toString"` (they gave "kind.parse is not a function"), and `fixed` or `from` cards with no tiles, which can never be played (this resolves the known issue about empty fixed cards). Its messages number cards from 1, like the editor. `playMoves` rejects moves after the level is won, which the game doesn't allow, and a retarget move whose target isn't a whole number.
