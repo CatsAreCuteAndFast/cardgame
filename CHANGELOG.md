@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-04**: the animation sliders are now only in the editor's Play tab, as Drifl asked: the tester page no longer has them (it uses the values in `editor.css`), and in the editor they're a collapsible "Animations" panel (closed by default, remembered per browser), kept as the place for future animation sliders too. `play/tune.js` and `play/tune.css` moved to `editor/`.
+
 - **2026-10-04**: removed `art/tiles/ember-orange/grey-png.py` (Drifl deleted it). The regenerate command in `grain-texture.html` no longer calls it, so a regenerated `grain.png` is RGB (about 1.2MB instead of 825KB); the committed greyscale file is unchanged.
 
 - **2026-10-04**: every tile and card showed the same grain, so on a big page the same pattern was visible over and over. `editor/grain.png` now holds 2×2 faces' worth of seamless grain at the same detail (1024px, greyscale to keep it at 825KB), and each tile and card shows a different part of it, picked from its position (`grainSpot` in `board.js`). The new `art/tiles/ember-orange/grey-png.py` does the greyscale step after Chrome renders `grain-texture.html`.

@@ -1,8 +1,9 @@
-// Temporary: sliders under the hand for the tile flip animation's CSS variables, to find values that look right. Remove once they're settled.
+// Animation tuning: a collapsible panel under the editor's Play hand with sliders for the animations' CSS variables.
 
 import { $, el } from "../editor/board.js";
 
 const TUNE_KEY = "cardgame.tester.tune.v2";
+const OPEN_KEY = "cardgame.editor.tune.open";
 const EASES = [
   ["linear", "linear"],
   ["ease", "ease"],
@@ -20,21 +21,21 @@ const EASES = [
 const ms = (name, label, max = 1500) => ({ name, label, unit: "ms", min: 0, max, step: 10 });
 const ease = (name, label) => ({ name, label, ease: true });
 const GROUPS = [
-  ["Flip", [
+  ["Tile flip", [
     ms("--light-start", "Light starts"), ms("--light-ms", "Light spreads for"), ease("--light-ease", "Light easing"),
     ms("--glow-start", "Glow starts"), ms("--glow-ms", "Glow fades for"),
     ms("--press-start", "Press starts"), ms("--press-ms", "Press lasts"), ease("--press-ease", "Press easing"),
     ms("--bob-start", "Bob starts"), ms("--bob-ms", "Bob lasts"),
     { name: "--bob-amp", label: "Bob height", unit: "cqh", min: 0, max: 8, step: 0.1 },
   ]],
-  ["Unflip", [
+  ["Tile unflip", [
     ms("--light-start-off", "Light starts"), ms("--light-ms-off", "Light shrinks for"), ease("--light-ease-off", "Light easing"),
     ms("--glow-start-off", "Glow starts"), ms("--glow-ms-off", "Glow fades for"),
     ms("--press-start-off", "Release starts"), ms("--press-ms-off", "Release lasts"), ease("--press-ease-off", "Release easing"),
     ms("--bob-start-off", "Bob starts"), ms("--bob-ms-off", "Bob lasts"),
     { name: "--bob-amp-off", label: "Bob height", unit: "cqh", min: 0, max: 8, step: 0.1 },
   ]],
-  ["Both", [
+  ["Tile flip and unflip", [
     { name: "--press", label: "Press depth", unit: "%", min: 0, max: 15, step: 0.1 },
     { name: "--bob-damp", label: "Each swing ×", unit: "", min: 0, max: 1, step: 0.05 },
     { name: "--bob-name", label: "Swings", unit: "", min: 1, max: 3, step: 1, prefix: "bob-" },
@@ -113,7 +114,7 @@ function build() {
   reset.addEventListener("click", () => {
     for (const setting of SETTINGS) apply(setting, defaults[setting.name]);
     save();
-    $("tune").replaceChildren(...build());
+    $("tune-body").replaceChildren(...build());
   });
   return [
     ...GROUPS.map(([title, settings]) => el("fieldset", {}, [el("legend", { textContent: title }), ...settings.map(control)])),
@@ -131,10 +132,16 @@ function init() {
     const value = stored[setting.name];
     apply(setting, typeof value === (setting.ease ? "string" : "number") ? value : defaults[setting.name]);
   }
-  const panel = el("div", { id: "tune" }, build());
-  // the tester's play screen is a fixed-height column, so the panel goes after it; the editor's Play tab flows, so it goes after the hand
-  if (document.querySelector("#play .board-area")) $("play").after(panel);
-  else $("play-hand").after(panel);
+  const panel = el("details", { id: "tune" }, [el("summary", { textContent: "Animations" }), el("div", { id: "tune-body" }, build())]);
+  try {
+    panel.open = localStorage.getItem(OPEN_KEY) === "1";
+  } catch {}
+  panel.addEventListener("toggle", () => {
+    try {
+      localStorage.setItem(OPEN_KEY, panel.open ? "1" : "0");
+    } catch {}
+  });
+  $("play-hand").after(panel);
   // taps in the panel aren't taps on empty space, which would cancel the selected card
   panel.addEventListener("click", (e) => e.stopPropagation());
 }
