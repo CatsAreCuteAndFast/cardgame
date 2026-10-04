@@ -157,7 +157,9 @@ function copyLevels(items, title, forPack = false) {
   const unready = forPack ? items.filter((level) => bridge.validate(level.data) || bridge.checkSolution(level.data, level.solution).error) : [];
   const names = unready.map((level) => `• ${level.name}`).join("\n");
   if (unready.length && !confirm(`These levels are invalid or have no working solution, so the tests would fail with them in levels/pack.json:\n${names}\n\nCopy anyway?`)) return;
-  const entries = items.map((level) => {
+  const folderName = (level) => folderById(level.folder)?.name ?? "\uffff";
+  const sorted = [...items].sort((a, b) => byName({ name: folderName(a) }, { name: folderName(b) }) || byName(a, b));
+  const entries = sorted.map((level) => {
     const folder = folderById(level.folder);
     return { name: level.name, ...(folder ? { folder: folder.name } : {}), level: level.data, ...(level.solution ? { solution: level.solution } : {}) };
   });

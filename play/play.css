@@ -1,4 +1,3 @@
-.level-item .number { color: var(--muted); font-weight: 600; min-width: 1.8em; }
 .level-item .done { color: var(--good); font-weight: 600; }
 .level-item.pack-item { cursor: pointer; flex-wrap: nowrap; }
 
@@ -7,6 +6,7 @@ main:has(#play.active) { padding-bottom: 0; }
   display: flex;
   flex-direction: column;
   height: calc(100dvh - var(--top-h, 90px) - 16px);
+  align-items: stretch;
 }
 #play > * { flex: none; }
 #play > .row { margin: 6px 0; }
@@ -29,3 +29,8 @@ main:has(#play.active) { padding-bottom: 0; }
   padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
 }
 #play .play-buttons button { min-height: 40px; padding: 0 10px; }
+
+/* the editor's wide layout splits #play into two columns; the tester keeps one */
+@media (min-width: 900px) {
+  main { max-width: 720px; }
+}

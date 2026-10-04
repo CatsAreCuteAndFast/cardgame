@@ -39,18 +39,22 @@ function callBridge(call) {
   }
 }
 
+// pack names repeat across folders, so progress is keyed by folder and name
+const levelKey = (entry) => (entry.folder ? `${entry.folder}/${entry.name}` : entry.name);
+const levelTitle = (entry) => (entry.folder ? `${entry.folder} · ${entry.name}` : entry.name);
+
 function startLevel(next) {
   index = next;
   playError = null;
-  writeStorage(LAST_KEY, pack[index].name);
+  writeStorage(LAST_KEY, levelKey(pack[index]));
   snap = callBridge(() => bridge.start(pack[index].level));
 }
 
 function tap(call) {
   if (!snap) return;
   snap = callBridge(call);
-  if (snap?.won && !solved.has(pack[index].name)) {
-    solved.add(pack[index].name);
+  if (snap?.won && !solved.has(levelKey(pack[index]))) {
+    solved.add(levelKey(pack[index]));
     writeStorage(SOLVED_KEY, [...solved]);
   }
   render();
@@ -68,7 +72,7 @@ function render() {
   document.documentElement.style.setProperty("--top-h", `${document.querySelector(".top").offsetHeight}px`);
   for (const button of document.querySelectorAll(".tab")) button.classList.toggle("active", button.dataset.tab === tab);
   for (const screen of document.querySelectorAll(".screen")) screen.classList.toggle("active", screen.id === tab);
-  $("current-name").textContent = index === null ? "" : `${index + 1}. ${pack[index].name}`;
+  $("current-name").textContent = index === null ? "" : levelTitle(pack[index]);
   if (tab === "levels") renderLevels();
   else renderPlay();
 }
@@ -76,30 +80,35 @@ function render() {
 function renderLevels() {
   $("pack-error").hidden = !packError;
   $("pack-error").textContent = packError ?? "";
-  const list = $("level-list");
-  list.replaceChildren();
-  if (!packError && pack.length === 0) list.append(el("li", { class: "empty", textContent: "No levels to test yet." }));
-  pack.forEach((entry, i) => {
-    list.append(
-      el(
-        "li",
-        {
-          class: "level-item pack-item" + (i === index ? " is-current" : ""),
-          onclick: () => {
-            startLevel(i);
-            tab = "play";
-            render();
-            window.scrollTo(0, 0);
+  const container = $("level-list");
+  container.replaceChildren();
+  if (!packError && pack.length === 0) container.append(el("p", { class: "empty", textContent: "No levels to test yet." }));
+  const folders = [...new Set(pack.map((entry) => entry.folder ?? ""))];
+  for (const folder of folders) {
+    const list = el("ol", { class: "level-list" });
+    pack.forEach((entry, i) => {
+      if ((entry.folder ?? "") !== folder) return;
+      list.append(
+        el(
+          "li",
+          {
+            class: "level-item pack-item" + (i === index ? " is-current" : ""),
+            onclick: () => {
+              startLevel(i);
+              tab = "play";
+              render();
+              window.scrollTo(0, 0);
+            },
           },
-        },
-        [
-          el("span", { class: "number", textContent: `${i + 1}.` }),
-          el("span", { class: "info" }, el("div", { class: "name", textContent: entry.name })),
-          solved.has(entry.name) ? el("span", { class: "done", textContent: "✓ solved" }) : null,
-        ],
-      ),
-    );
-  });
+          [
+            el("span", { class: "info" }, el("div", { class: "name", textContent: entry.name })),
+            solved.has(levelKey(entry)) ? el("span", { class: "done", textContent: "✓ solved" }) : null,
+          ],
+        ),
+      );
+    });
+    container.append(el("section", { class: "folder" }, [folder ? el("h2", { textContent: folder }) : null, list]));
+  }
 }
 
 function renderPlay() {
@@ -141,7 +150,7 @@ async function loadPack() {
     packError = "Couldn't load the levels: " + (error.message ?? error);
   }
   const last = readStorage(LAST_KEY, null);
-  const found = pack.findIndex((entry) => entry.name === last);
+  const found = pack.findIndex((entry) => levelKey(entry) === last);
   if (found !== -1) index = found;
   render();
 }
