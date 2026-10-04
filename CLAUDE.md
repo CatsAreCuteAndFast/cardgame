@@ -126,7 +126,7 @@ Clicking empty space cancels back to `Idle`. Invalid tile picks are ignored.
 
 Newest first. Each entry gives the date, the commit (if committed) and what changed.
 
-- **2026-10-04** (uncommitted): added a "↻ Reload" button to the header of the editor and the tester page (`hardReload` in `board.js`), because Drifl's phone kept showing the old version after a deploy. It refetches the page's own HTML/JS/CSS from the network before reloading.
+- **2026-10-04** (321a88d): added a "↻ Reload" button to the header of the editor and the tester page (`hardReload` in `board.js`), because Drifl's phone kept showing the old version after a deploy. It refetches the page's own HTML/JS/CSS from the network before reloading.
 
 - **2026-10-04** (d4159e8): tiles no longer show their type id as text. The texture tells the three types apart (plain, diagonal stripes for notflippable, dots for notswappable; the notswappable inset border was removed), and the substrate counter moved from the top-right corner to a dark circle in the middle of the tile. Links are unchanged for now.
 
