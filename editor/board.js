@@ -214,9 +214,11 @@ function shake(node) {
   node.classList.add("shake");
 }
 
-function showPreview(board, preview, blocked, effect) {
+// marks what card would change; its tile outlines take the colour of the card's face
+function showPreview(board, preview, blocked, card) {
   for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("preview", "preview-outline", "blocked");
-  const previewClass = effect === "flip" ? "preview" : "preview-outline";
+  if (card) board.style.setProperty("--card-line", cardFace(card.effect, card.kind).color);
+  const previewClass = card?.effect === "flip" ? "preview" : "preview-outline";
   for (const coord of preview) findCell(board, coord)?.classList.add(previewClass);
   for (const coord of blocked) findCell(board, coord)?.classList.add("blocked");
 }
@@ -252,7 +254,7 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     node.dataset.col = col;
     board.append(node);
   });
-  showPreview(board, snap.preview, snap.blocked, card?.effect);
+  showPreview(board, snap.preview, snap.blocked, card);
 
   snap.hand.forEach((card, index) => {
     const classes = [];
@@ -308,7 +310,7 @@ export function attachPlayInput(board, hand, api) {
       return false;
     }
     for (const coord of peek.candidate_tiles) findCell(board, coord)?.classList.add("targeting");
-    showPreview(board, peek.preview, peek.blocked, card.effect);
+    showPreview(board, peek.preview, peek.blocked, card);
     return true;
   }
 
