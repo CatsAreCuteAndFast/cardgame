@@ -3,6 +3,7 @@
 // storage in store.js, gist sync in sync.js.
 
 import { $, catalog } from "./board.js";
+import { initGrain } from "./grain.js";
 import { store, current, loadLevels, saveLevels, folderById } from "./store.js";
 import { initSync } from "./sync.js";
 import { renderLevels, initLevels } from "./levels.js";
@@ -49,6 +50,7 @@ export function changed() {
 }
 
 function init() {
+  initGrain();
   loadLevels();
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   for (const button of document.querySelectorAll(".tab")) {

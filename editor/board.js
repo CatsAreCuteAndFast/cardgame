@@ -47,7 +47,7 @@ export function flipDuration() {
 
 // anim: { on, elapsed, total } plays the press-and-light (or reverse) animation, already elapsed ms in.
 // the animation classes come off when it ends, so the browser drops the layers it made for it
-// which part of grain.png tile or card number n shows, so neighbours don't share the same grain
+// which part of the grain (grain.js) tile or card number n shows, so neighbours don't share the same grain
 function grainSpot(n) {
   const hash = Math.imul(n + 1, 2654435761) >>> 0;
   return `--gx:${hash % 100}%;--gy:${(hash >>> 8) % 100}%;`;

@@ -2,6 +2,7 @@
 
 import { $, el, playPrompt, playStatus, renderSnapshot, attachPlayInput } from "../editor/board.js";
 import * as bridge from "../editor/bridge.js";
+import { initGrain } from "../editor/grain.js";
 
 const PACK_PATH = "../levels/pack.json";
 const SOLVED_KEY = "cardgame.tester.solved";
@@ -156,6 +157,7 @@ async function loadPack() {
 }
 
 function init() {
+  initGrain();
   solved = new Set(readStorage(SOLVED_KEY, []));
   for (const button of document.querySelectorAll(".tab")) {
     button.addEventListener("click", () => {
