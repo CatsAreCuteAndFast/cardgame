@@ -218,7 +218,9 @@ function shake(node) {
 function showPreview(board, preview, blocked, card) {
   for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("preview", "preview-outline", "blocked");
   if (card) board.style.setProperty("--card-line", cardFace(card.effect, card.kind).color);
-  const previewClass = card?.effect !== "flip" ? "preview-outline" : card.kind === "fixed" ? "preview-press" : "preview";
+  // flip all doesn't say which of its tiles would change: working that out is the player's job, so it only shows its outlines
+  if (card?.effect === "flip" && card.kind === "fixed") return;
+  const previewClass = card?.effect === "flip" ? "preview" : "preview-outline";
   for (const coord of preview) findCell(board, coord)?.classList.add(previewClass);
   for (const coord of blocked) findCell(board, coord)?.classList.add("blocked");
 }
