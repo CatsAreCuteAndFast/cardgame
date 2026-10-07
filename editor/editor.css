@@ -317,22 +317,51 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   outline-offset: 4px;
   border-radius: 8px;
 }
-/* every card outlines its tiles like the board's drag border: a dashed line just outside the tile, in the colour of the card's face
-   (--card-line, set by board.js), solid on a picked tile. a flip's preview also fills the tile with the colour it will flip to */
-.cell:is(.candidate, .targeting, .picked, .preview, .preview-outline) .tile::before {
+/* tile outlines (art/outlines): a 126/110 rounded rect around the tile. a tile the card can act on gets marching dashes (.ring.valid),
+   a picked tile a solid glowing line (.ring.lock) that pops in once when picked (.lock-in) while the dashes fade out */
+:root {
+  --outline: #ffffff;
+  --ants-ms: 2800ms;
+  --lock-ms: 300ms;
+  --lock-ease: cubic-bezier(.3, 1.4, .5, 1);
+  --pop-ms: 350ms;
+  --pop-ease: cubic-bezier(.3, 1.6, .5, 1);
+  --pop-scale: 1.18;
+}
+.ring {
+  display: none;
+  position: absolute;
+  inset: calc(-8 / 110 * 100cqw);
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+.ring rect { fill: none; stroke: var(--outline); }
+/* the marching dashes repaint every frame (not transform or opacity); their own layer keeps that to the thin outline, about 7x cheaper */
+.ring.valid { will-change: transform; }
+.ring.valid rect { stroke-width: 3; stroke-opacity: .75; stroke-dasharray: 12 9; animation: ants var(--ants-ms) linear infinite; }
+.ring.lock rect { stroke-width: 5; filter: drop-shadow(0 0 7px var(--outline)); }
+.cell:is(.candidate, .targeting, .preview, .preview-outline) .ring.valid,
+.cell.picked .ring.lock,
+.cell.picked.lock-in .ring.valid { display: block; }
+.cell.picked.lock-in .ring.valid { animation: fade-out var(--lock-ms) var(--lock-ease) both; }
+.cell.picked.lock-in .ring.lock { animation: pop var(--pop-ms) var(--pop-ease) both; }
+@keyframes ants { to { stroke-dashoffset: -42; } }
+@keyframes pop { from { transform: scale(var(--pop-scale)); opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+/* a flip's preview also fills the tile with the colour it will flip to */
+.cell.preview .tile::before {
   content: "";
   z-index: 2;
   position: absolute;
   inset: 0;
-  outline: 3px dashed var(--card-line, var(--picked));
-  outline-offset: 3px;
   border-radius: var(--round);
+  background: color-mix(in srgb, var(--flipped) 60%, transparent);
   pointer-events: none;
 }
-.cell.picked .tile::before { outline-style: solid; }
-.cell.preview .tile::before { background: color-mix(in srgb, var(--flipped) 60%, transparent); }
 .cell.preview .tile.flipped::before { background: color-mix(in srgb, var(--tile) 60%, transparent); }
 .board.dragging .cell .tile::before,
+.board.dragging .cell .ring,
 .board.dragging .cell.blocked .tile::after { opacity: var(--drag, 0); }
 
 .cell.blocked .tile::after {

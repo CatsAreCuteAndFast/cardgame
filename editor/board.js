@@ -74,6 +74,8 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
         : null,
       order !== null ? el("span", { class: "order", textContent: order }) : null,
     ]),
+    ring("valid"),
+    ring("lock"),
   ]);
   if (anim) setTimeout(() => tile.classList.remove("anim-on", "anim-off"), anim.total - anim.elapsed);
   return el(
@@ -85,6 +87,31 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
     },
     tile,
   );
+}
+
+// a tile outline (art/outlines): a rounded rect 8/110 of the tile outside it, dashes measured on a 420-long path
+function ring(kind) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", `ring ${kind}`);
+  svg.setAttribute("viewBox", "0 0 126 126");
+  svg.innerHTML = '<rect x="1.5" y="1.5" width="123" height="123" rx="21" pathLength="420"/>';
+  return svg;
+}
+
+// the board is rebuilt on every tap, which restarts the marching dashes; starting them all at time 0 keeps every outline in step
+function syncAnts(board) {
+  for (const anim of board.getAnimations({ subtree: true })) if (anim.animationName === "ants") anim.startTime = 0;
+}
+
+// per board: the picked tiles last shown, so only a newly picked tile pops its outline in
+const pickHistory = new WeakMap();
+
+function newlyPicked(board, snap) {
+  const prev = pickHistory.get(board);
+  const keys = snap.picked.map(([row, col]) => `${row},${col}`);
+  pickHistory.set(board, { game: snap.game_id, keys });
+  const old = prev && prev.game === snap.game_id ? prev.keys : [];
+  return keys.filter((key) => !old.includes(key));
 }
 
 // per board: last flipped state and when each tile last changed, so a flip animates across re-renders.
@@ -214,15 +241,16 @@ function shake(node) {
   node.classList.add("shake");
 }
 
-// marks what card would change; its tile outlines take the colour of the card's face
+// marks what card would change
 function showPreview(board, preview, blocked, card) {
   for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("preview", "preview-outline", "blocked");
-  if (card) board.style.setProperty("--card-line", cardFace(card.effect, card.kind).color);
   // flip all doesn't say which of its tiles would change: working that out is the player's job, so it only shows its outlines
-  if (card?.effect === "flip" && card.kind === "fixed") return;
-  const previewClass = card?.effect === "flip" ? "preview" : "preview-outline";
-  for (const coord of preview) findCell(board, coord)?.classList.add(previewClass);
-  for (const coord of blocked) findCell(board, coord)?.classList.add("blocked");
+  if (!(card?.effect === "flip" && card.kind === "fixed")) {
+    const previewClass = card?.effect === "flip" ? "preview" : "preview-outline";
+    for (const coord of preview) findCell(board, coord)?.classList.add(previewClass);
+    for (const coord of blocked) findCell(board, coord)?.classList.add("blocked");
+  }
+  syncAnts(board);
 }
 
 export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
@@ -235,12 +263,13 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   setBoardShape(board, snap.width, snap.height);
   board.classList.toggle("swipe", canSwipe(snap));
   const anims = flipAnimations(board, snap);
+  const fresh = newlyPicked(board, snap);
   snap.cells.forEach((cell, index) => {
     const row = Math.floor(index / snap.width);
     const col = index % snap.width;
     const classes = [];
     const candidate = has(snap.candidate_tiles, row, col);
-    if (has(snap.picked, row, col)) classes.push("picked");
+    if (has(snap.picked, row, col)) classes.push("picked", ...(fresh.includes(`${row},${col}`) ? ["lock-in"] : []));
     else if (candidate) classes.push(snap.targeting ? "targeting" : "candidate");
     const node = renderCell(cell, {
       classes,

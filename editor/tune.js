@@ -39,6 +39,12 @@ const GROUPS = [
     { name: "--press", label: "Press depth", unit: "%", min: 0, max: 15, step: 0.1 },
     { name: "--recoil-back", label: "Spring back ×", unit: "", min: 0, max: 1, step: 0.05 },
   ]],
+  ["Tile outline", [
+    ms("--ants-ms", "Dashes loop every", 8000),
+    ms("--lock-ms", "Dashes fade for", 1000), ease("--lock-ease", "Dash fade easing"),
+    ms("--pop-ms", "Pick pops for", 1000), ease("--pop-ease", "Pop easing"),
+    { name: "--pop-scale", label: "Pop starts at ×", unit: "", min: 1, max: 1.6, step: 0.01 },
+  ]],
 ];
 const SETTINGS = GROUPS.flatMap(([, settings]) => settings);
 
