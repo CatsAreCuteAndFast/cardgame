@@ -4,6 +4,7 @@ import { $, el } from "../editor/board.js";
 
 const TUNE_KEY = "cardgame.tester.tune.v2";
 const OPEN_KEY = "cardgame.editor.tune.open";
+const GROUPS_KEY = "cardgame.editor.tune.groups";
 const EASES = [
   ["linear", "linear"],
   ["ease", "ease"],
@@ -104,6 +105,22 @@ function control(setting) {
   return el("div", { class: "tune-row" }, [name, input, output, reset]);
 }
 
+// a dropdown per animation; which ones are open is remembered
+function group(title, settings) {
+  let open = [];
+  try {
+    open = JSON.parse(localStorage.getItem(GROUPS_KEY)) ?? [];
+  } catch {}
+  const box = el("details", { class: "tune-group", open: open.includes(title) }, [el("summary", { textContent: title }), ...settings.map(control)]);
+  box.addEventListener("toggle", () => {
+    try {
+      const now = (JSON.parse(localStorage.getItem(GROUPS_KEY)) ?? []).filter((t) => t !== title);
+      localStorage.setItem(GROUPS_KEY, JSON.stringify(box.open ? [...now, title] : now));
+    } catch {}
+  });
+  return box;
+}
+
 function build() {
   const copy = el("button", { class: "small", textContent: "Copy values" });
   copy.addEventListener("click", async () => {
@@ -122,7 +139,7 @@ function build() {
     $("tune-body").replaceChildren(...build());
   });
   return [
-    ...GROUPS.map(([title, settings]) => el("fieldset", {}, [el("legend", { textContent: title }), ...settings.map(control)])),
+    ...GROUPS.map(([title, settings]) => group(title, settings)),
     el("div", { class: "tune-buttons" }, [copy, reset]),
   ];
 }
