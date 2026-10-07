@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-07**: as Drifl asked, "Flip all" no longer previews with a coloured fill: while it is dragged, its tiles are pushed in (flipped ones let up) more the closer the card gets to the board's centre, and fully while it's selected or held. The drag's closeness to the centre (`--drag`) is now measured only along the axis the card comes in on (vertical from the hand), so sideways movement no longer changes it.
+
 - **2026-10-07**: Drifl didn't like the white-and-blue tile outline, so card outlines now follow the board's drag border: a 3px dashed line just outside the tile, in the colour of the card being played (orange for flips, lavender for swap), dashed for options and previews and solid for picked tiles. Flip previews keep their fill.
 
 - **2026-10-07**: every card now outlines tiles the same way, as Drifl asked: the dashed line that "Flip all" showed (white dashes over a light blue line, now with the tile's rounded corners) replaces the thick blue boxes for a card's options and the thick orange box for picked tiles (picked tiles get orange dashes instead). Flip previews keep their fill, and the board's orange drag border is unchanged. The editor's coord selection keeps its thick orange box.

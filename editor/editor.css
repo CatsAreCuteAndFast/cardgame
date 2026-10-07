@@ -319,7 +319,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 }
 /* every card outlines its tiles like the board's drag border: a dashed line just outside the tile, in the colour of the card's face
    (--card-line, set by board.js), solid on a picked tile. a flip's preview also fills the tile with the colour it will flip to */
-.cell:is(.candidate, .targeting, .picked, .preview, .preview-outline) .tile::before {
+.cell:is(.candidate, .targeting, .picked, .preview, .preview-outline, .preview-press) .tile::before {
   content: "";
   z-index: 2;
   position: absolute;
@@ -332,6 +332,9 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .cell.picked .tile::before { outline-style: solid; }
 .cell.preview .tile::before { background: color-mix(in srgb, var(--flipped) 60%, transparent); }
 .cell.preview .tile.flipped::before { background: color-mix(in srgb, var(--tile) 60%, transparent); }
+/* flip all shows the press of its flip: its tiles are pushed in (flipped ones let up) as far as --drag says, fully when not dragging */
+.cell.preview-press .tile:not(.flipped) .face { transform: translateY(calc(var(--press) * var(--drag, 1))); }
+.cell.preview-press .tile.flipped .face { transform: translateY(calc(var(--press) * (1 - var(--drag, 1)))); }
 .board.dragging .cell .tile::before,
 .board.dragging .cell.blocked .tile::after { opacity: var(--drag, 0); }
 

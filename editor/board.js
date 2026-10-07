@@ -218,7 +218,7 @@ function shake(node) {
 function showPreview(board, preview, blocked, card) {
   for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("preview", "preview-outline", "blocked");
   if (card) board.style.setProperty("--card-line", cardFace(card.effect, card.kind).color);
-  const previewClass = card?.effect === "flip" ? "preview" : "preview-outline";
+  const previewClass = card?.effect !== "flip" ? "preview-outline" : card.kind === "fixed" ? "preview-press" : "preview";
   for (const coord of preview) findCell(board, coord)?.classList.add(previewClass);
   for (const coord of blocked) findCell(board, coord)?.classList.add("blocked");
 }
@@ -334,13 +334,15 @@ export function attachPlayInput(board, hand, api) {
     showPeek(press.index);
   }
 
+  // measured only along the axis the card comes in on (the one it started further from the centre on)
   function dragStrength(e) {
     const rect = board.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const full = Math.min(rect.width, rect.height) * 0.15;
-    const start = Math.hypot(press.x - cx, press.y - cy);
-    const now = Math.hypot(e.clientX - cx, e.clientY - cy);
+    const vertical = Math.abs(press.y - cy) >= Math.abs(press.x - cx);
+    const full = (vertical ? rect.height : rect.width) * 0.15;
+    const start = vertical ? Math.abs(press.y - cy) : Math.abs(press.x - cx);
+    const now = vertical ? Math.abs(e.clientY - cy) : Math.abs(e.clientX - cx);
     return Math.min(1, Math.max(0, (start - now) / Math.max(1, start - full)));
   }
 
