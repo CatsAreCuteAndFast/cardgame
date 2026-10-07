@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-07**: the bob at the end of a tile flip is now a button-like recoil, as Drifl asked: after the press the face travels 2cqh deeper, springs back a little past its resting depth (`--recoil-back`, 0.35 of the extra push) and settles. Unflip mirrors it (the face springs 1cqh up past its rest, dips back and settles). Timings are unchanged (the `--bob-start`/`--bob-ms` variables are now `--recoil-start`/`--recoil-ms` with the same values). `--bob-amp`, `--bob-damp`, `--bob-name` and the `bob-1`..`bob-3` keyframes are replaced by `--recoil-depth`, `--recoil-depth-off`, `--recoil-back` and one `recoil` keyframe, and the Animations sliders follow.
+
 - **2026-10-04**: the animation sliders are now only in the editor's Play tab, as Drifl asked: the tester page no longer has them (it uses the values in `editor.css`), and in the editor they're a collapsible "Animations" panel (closed by default, remembered per browser), kept as the place for future animation sliders too. `play/tune.js` and `play/tune.css` moved to `editor/`.
 
 - **2026-10-04**: removed `art/tiles/ember-orange/grey-png.py` (Drifl deleted it). The regenerate command in `grain-texture.html` no longer calls it, so a regenerated `grain.png` is RGB (about 1.2MB instead of 825KB); the committed greyscale file is unchanged.

@@ -193,7 +193,8 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 }
 
 /* flip: the face is pushed in, the light spreads from the centre (the base's orange edge fades in with it) and the glow fades in
-   as it reaches the edges, then the face bobs: a damped wobble on its own `translate`, so it adds to the press. unflip runs the other way.
+   as it reaches the edges, then the face recoils like a button: it travels on deeper, springs back a little past its resting depth and settles,
+   on its own `translate`, so it adds to the press. unflip runs the other way: the face springs up past its rest, dips back a little and settles.
    each part has its own start, length and easing, for flipping and for unflipping (-off).
    the -start and -ms variables are also read by board.js (flipDuration), so keep them in ms */
 :root {
@@ -206,9 +207,9 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --light-ease: cubic-bezier(.32, 0, .67, 0);
   --glow-start: 160ms;
   --glow-ms: 245ms;
-  --bob-start: 220ms;
-  --bob-ms: 480ms;
-  --bob-amp: 1.5cqh;
+  --recoil-start: 220ms;
+  --recoil-ms: 480ms;
+  --recoil-depth: 2cqh;
   --press-start-off: 180ms;
   --press-ms-off: 280ms;
   --press-ease-off: cubic-bezier(.3, 0, .2, 1.3);
@@ -217,29 +218,28 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --light-ease-off: cubic-bezier(.32, 0, .67, 0);
   --glow-start-off: 0ms;
   --glow-ms-off: 210ms;
-  --bob-start-off: 350ms;
-  --bob-ms-off: 350ms;
-  --bob-amp-off: 1cqh;
-  --bob-damp: .4;
-  --bob-name: bob-2;
+  --recoil-start-off: 350ms;
+  --recoil-ms-off: 350ms;
+  --recoil-depth-off: -1cqh;
+  --recoil-back: .35;
 }
 .tile.anim-on {
   --p-start: var(--press-start); --p-ms: var(--press-ms); --p-ease: var(--press-ease);
   --l-start: var(--light-start); --l-ms: var(--light-ms); --l-ease: var(--light-ease);
   --g-start: var(--glow-start); --g-ms: var(--glow-ms);
-  --b-start: var(--bob-start); --b-ms: var(--bob-ms); --bob-a: var(--bob-amp);
+  --r-start: var(--recoil-start); --r-ms: var(--recoil-ms); --r-depth: var(--recoil-depth);
 }
 .tile.anim-off {
   --p-start: var(--press-start-off); --p-ms: var(--press-ms-off); --p-ease: var(--press-ease-off);
   --l-start: var(--light-start-off); --l-ms: var(--light-ms-off); --l-ease: var(--light-ease-off);
   --g-start: var(--glow-start-off); --g-ms: var(--glow-ms-off);
-  --b-start: var(--bob-start-off); --b-ms: var(--bob-ms-off); --bob-a: var(--bob-amp-off);
+  --r-start: var(--recoil-start-off); --r-ms: var(--recoil-ms-off); --r-depth: var(--recoil-depth-off);
 }
 .tile:is(.anim-on, .anim-off) :is(.face, .light, .glow),
 .tile:is(.anim-on, .anim-off) .base::after { animation-fill-mode: both; }
 .tile:is(.anim-on, .anim-off) .face {
-  animation-duration: var(--p-ms), var(--b-ms);
-  animation-delay: calc(var(--anim-delay, 0ms) + var(--p-start)), calc(var(--anim-delay, 0ms) + var(--b-start));
+  animation-duration: var(--p-ms), var(--r-ms);
+  animation-delay: calc(var(--anim-delay, 0ms) + var(--p-start)), calc(var(--anim-delay, 0ms) + var(--r-start));
   animation-timing-function: var(--p-ease), linear;
 }
 .tile:is(.anim-on, .anim-off) .light,
@@ -255,11 +255,11 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   animation-timing-function: linear;
 }
 .tile.anim-on .base::after { animation-name: base-on; }
-.tile.anim-on .face { animation-name: press-in, var(--bob-name); }
+.tile.anim-on .face { animation-name: press-in, recoil; }
 .tile.anim-on .light { animation-name: light-on; }
 .tile.anim-on .glow { animation-name: glow-on; }
 .tile.anim-off .base::after { animation-name: base-off; }
-.tile.anim-off .face { animation-name: press-out, var(--bob-name); }
+.tile.anim-off .face { animation-name: press-out, recoil; }
 .tile.anim-off .light { animation-name: light-off; }
 .tile.anim-off .glow { animation-name: glow-off; }
 @keyframes press-in { from { transform: translateY(0); } to { transform: translateY(var(--press)); } }
@@ -270,23 +270,11 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 @keyframes light-off { from { transform: scale(1); } to { transform: scale(0); } }
 @keyframes glow-on { from { opacity: 0; } to { opacity: 1; } }
 @keyframes glow-off { from { opacity: 1; } to { opacity: 0; } }
-/* first up, then down, each swing --bob-damp times the last */
-@keyframes bob-1 {
-  0% { translate: 0 0; animation-timing-function: ease-out; }
-  40% { translate: 0 calc(-1 * var(--bob-a)); animation-timing-function: ease-in-out; }
-  100% { translate: 0 0; }
-}
-@keyframes bob-2 {
-  0% { translate: 0 0; animation-timing-function: ease-out; }
-  25% { translate: 0 calc(-1 * var(--bob-a)); animation-timing-function: ease-in-out; }
-  60% { translate: 0 calc(var(--bob-a) * var(--bob-damp)); animation-timing-function: ease-in-out; }
-  100% { translate: 0 0; }
-}
-@keyframes bob-3 {
-  0% { translate: 0 0; animation-timing-function: ease-out; }
-  18% { translate: 0 calc(-1 * var(--bob-a)); animation-timing-function: ease-in-out; }
-  45% { translate: 0 calc(var(--bob-a) * var(--bob-damp)); animation-timing-function: ease-in-out; }
-  72% { translate: 0 calc(-1 * var(--bob-a) * var(--bob-damp) * var(--bob-damp)); animation-timing-function: ease-in-out; }
+/* past the rest position by --r-depth (down when positive), back the other way by --recoil-back of that, then settle */
+@keyframes recoil {
+  0% { translate: 0 0; animation-timing-function: cubic-bezier(.2, .6, .4, 1); }
+  30% { translate: 0 var(--r-depth); animation-timing-function: ease-in-out; }
+  65% { translate: 0 calc(-1 * var(--r-depth) * var(--recoil-back)); animation-timing-function: ease-in-out; }
   100% { translate: 0 0; }
 }
 @media (prefers-reduced-motion: reduce) {

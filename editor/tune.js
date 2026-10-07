@@ -25,20 +25,19 @@ const GROUPS = [
     ms("--light-start", "Light starts"), ms("--light-ms", "Light spreads for"), ease("--light-ease", "Light easing"),
     ms("--glow-start", "Glow starts"), ms("--glow-ms", "Glow fades for"),
     ms("--press-start", "Press starts"), ms("--press-ms", "Press lasts"), ease("--press-ease", "Press easing"),
-    ms("--bob-start", "Bob starts"), ms("--bob-ms", "Bob lasts"),
-    { name: "--bob-amp", label: "Bob height", unit: "cqh", min: 0, max: 8, step: 0.1 },
+    ms("--recoil-start", "Recoil starts"), ms("--recoil-ms", "Recoil lasts"),
+    { name: "--recoil-depth", label: "Extra push", unit: "cqh", min: -4, max: 4, step: 0.1 },
   ]],
   ["Tile unflip", [
     ms("--light-start-off", "Light starts"), ms("--light-ms-off", "Light shrinks for"), ease("--light-ease-off", "Light easing"),
     ms("--glow-start-off", "Glow starts"), ms("--glow-ms-off", "Glow fades for"),
     ms("--press-start-off", "Release starts"), ms("--press-ms-off", "Release lasts"), ease("--press-ease-off", "Release easing"),
-    ms("--bob-start-off", "Bob starts"), ms("--bob-ms-off", "Bob lasts"),
-    { name: "--bob-amp-off", label: "Bob height", unit: "cqh", min: 0, max: 8, step: 0.1 },
+    ms("--recoil-start-off", "Recoil starts"), ms("--recoil-ms-off", "Recoil lasts"),
+    { name: "--recoil-depth-off", label: "Extra push (− is up)", unit: "cqh", min: -4, max: 4, step: 0.1 },
   ]],
   ["Tile flip and unflip", [
     { name: "--press", label: "Press depth", unit: "%", min: 0, max: 15, step: 0.1 },
-    { name: "--bob-damp", label: "Each swing ×", unit: "", min: 0, max: 1, step: 0.05 },
-    { name: "--bob-name", label: "Swings", unit: "", min: 1, max: 3, step: 1, prefix: "bob-" },
+    { name: "--recoil-back", label: "Spring back ×", unit: "", min: 0, max: 1, step: 0.05 },
   ]],
 ];
 const SETTINGS = GROUPS.flatMap(([, settings]) => settings);
@@ -47,13 +46,13 @@ const defaults = {};
 let values = {};
 
 function cssValue(setting, value) {
-  return setting.ease ? value : `${setting.prefix ?? ""}${value}${setting.unit}`;
+  return setting.ease ? value : `${value}${setting.unit}`;
 }
 
 function read(setting) {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(setting.name).trim();
   if (setting.ease) return raw;
-  return parseFloat(setting.prefix ? raw.slice(setting.prefix.length) : raw);
+  return parseFloat(raw);
 }
 
 function apply(setting, value) {

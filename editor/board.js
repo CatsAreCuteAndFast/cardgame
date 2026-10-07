@@ -34,12 +34,12 @@ export function setBoardShape(board, width, height) {
   board.style.setProperty("--rows", height);
 }
 
-// how long a flip runs in ms: the longest part (press, light, glow, bob) of flipping or unflipping, from the CSS variables in editor.css
+// how long a flip runs in ms: the longest part (press, light, glow, recoil) of flipping or unflipping, from the CSS variables in editor.css
 export function flipDuration() {
   const style = getComputedStyle(document.documentElement);
   const ms = (name) => parseFloat(style.getPropertyValue(name)) || 0;
   const ends = [];
-  for (const part of ["press", "light", "glow", "bob"]) {
+  for (const part of ["press", "light", "glow", "recoil"]) {
     for (const off of ["", "-off"]) ends.push(ms(`--${part}-start${off}`) + ms(`--${part}-ms${off}`));
   }
   return Math.max(...ends);
