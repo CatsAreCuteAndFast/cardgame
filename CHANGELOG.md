@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-07**: as Drifl asked, each animation group in the Animations panel (Tile flip, Tile unflip, Tile flip and unflip, Tile outline) is now its own dropdown instead of an always-open box; which ones are open is remembered in `cardgame.editor.tune.groups`.
+
 - **2026-10-07**: settled Drifl's tuned flip and unflip timings into `editor/editor.css` (from the Animations panel): a quicker flip (press 180ms, light 300ms, glow from 110ms for 170ms, recoil from 180ms for 440ms), and an unflip that now presses in first (from 60ms for 230ms, same ease-in as the flip instead of the overshoot) with the light and glow starting later (90ms and 180ms) and a shorter recoil (from 290ms for 320ms). The outline values are unchanged.
 
 - **2026-10-07**: Drifl found the grain far too visible, so `STRENGTH` in `editor/grain.js` went from 10 to 3: the specks now stray at most a little from mid grey, leaving only a faint grain on tiles and cards.
