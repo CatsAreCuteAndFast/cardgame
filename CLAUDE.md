@@ -17,8 +17,8 @@ Every reply to Drifl must list all changes made in that turn: files, commits, an
 ## Git workflow (standing instruction)
 
 Claude handles git for this project: staging, writing commit messages, and keeping history tidy.
-- **Always ask Drifl for permission before running `git commit`.** Never commit without explicit approval, even when a commit seems obvious. Also ask first before pushing, amending, rebasing or any other operation that rewrites history.
-- Before asking, show which files will be committed and the proposed message.
+- **Commit and push without asking** whatever is worth committing (one logical change per commit, pushed to `main` so GitHub Pages redeploys). This is a solo project, so history tidiness isn't a concern. If something is left uncommitted, say so in the reply.
+- **Ask Drifl first** before any git operation that changes history beyond adding commits and pushing them: amending, rebasing, resetting, force-pushing, deleting branches and the like.
 - Commit messages: a short lowercase summary line that is specific about what changed (avoid repeating generic messages like "fixed some minor issues"). Add a body when the reason isn't obvious.
 - One logical change per commit. Keep generated files out of commits; `.gitignore` covers bytecode, caches, venvs and editor files.
 
