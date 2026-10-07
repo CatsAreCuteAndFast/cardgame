@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-07**: every card now outlines tiles the same way, as Drifl asked: the dashed line that "Flip all" showed (white dashes over a light blue line, now with the tile's rounded corners) replaces the thick blue boxes for a card's options and the thick orange box for picked tiles (picked tiles get orange dashes instead). Flip previews keep their fill, and the board's orange drag border is unchanged. The editor's coord selection keeps its thick orange box.
+
 - **2026-10-07**: new flip defaults from Drifl's tuning: the press now eases in (`--press-ease` is the "soft in" curve the light uses, instead of the overshoot curve); every other animation value stays as it was.
 
 - **2026-10-07**: new git rule in CLAUDE.md, as Drifl asked: Claude commits and pushes whatever is worth committing without asking, and asks only before operations that change history beyond adding commits (amend, rebase, reset, force-push).
