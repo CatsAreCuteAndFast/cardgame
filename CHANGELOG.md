@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-07**: smoothed the tile and card grain, since Drifl could see its single pixels on a 1920×1080 screen. The grain was single-pixel noise (as in the SVGs), so when a tile is drawn much smaller than the texture's 512px per face, as on desktop, it showed as harsh speckle. `grain-texture.html` now blurs the noise by 0.8 units and raises its contrast (5.2 instead of 1.6) so the grain stays visible, and `editor/grain.png` was regenerated from it (now RGB, 710KB instead of the 825KB greyscale file).
+
 - **2026-10-07**: "Flip all" no longer shows what it would change, as Drifl asked (working that out is up to the player): its tiles get only the card's dashed outline, with no press preview, fill or ✕ on blocked tiles.
 
 - **2026-10-07**: as Drifl asked, "Flip all" no longer previews with a coloured fill: while it is dragged, its tiles are pushed in (flipped ones let up) more the closer the card gets to the board's centre, and fully while it's selected or held. The drag's closeness to the centre (`--drag`) is now measured only along the axis the card comes in on (vertical from the hand), so sideways movement no longer changes it.
