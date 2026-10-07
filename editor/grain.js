@@ -2,7 +2,7 @@
 // and stays sharp at any tile size, zoom or screen. It sets --grain-img and --grain-size (editor.css) on the page.
 
 const SIZE = 512; // device pixels per side; it repeats, and each tile shows a different part of it (grainSpot in board.js)
-const STRENGTH = 10; // how far each speck strays from mid grey, which overlays as no change
+const STRENGTH = 3; // how far each speck strays from mid grey, which overlays as no change
 
 function drawNoise() {
   const canvas = document.createElement("canvas");
