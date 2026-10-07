@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-07**: new flip defaults from Drifl's tuning: the press now eases in (`--press-ease` is the "soft in" curve the light uses, instead of the overshoot curve); every other animation value stays as it was.
+
 - **2026-10-07**: new git rule in CLAUDE.md, as Drifl asked: Claude commits and pushes whatever is worth committing without asking, and asks only before operations that change history beyond adding commits (amend, rebase, reset, force-push).
 
 - **2026-10-07**: the bob at the end of a tile flip is now a button-like recoil, as Drifl asked: after the press the face travels 2cqh deeper, springs back a little past its resting depth (`--recoil-back`, 0.35 of the extra push) and settles. Unflip mirrors it (the face springs 1cqh up past its rest, dips back and settles). Timings are unchanged (the `--bob-start`/`--bob-ms` variables are now `--recoil-start`/`--recoil-ms` with the same values). `--bob-amp`, `--bob-damp`, `--bob-name` and the `bob-1`..`bob-3` keyframes are replaced by `--recoil-depth`, `--recoil-depth-off`, `--recoil-back` and one `recoil` keyframe, and the Animations sliders follow.
