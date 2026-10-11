@@ -587,7 +587,8 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
 // and retarget is dropped on the card to change; swiping picks neighbouring tiles.
 // while a tile card is dragged, its options and changes fade in as it nears the board's centre (--drag 0..1).
 // holding a card still shows the same at full strength until it is let go.
-// the ghost that follows the finger never just vanishes: it shrinks into the tile or card it was played on, or flies back to its place in the hand.
+// the ghost that follows the finger never just vanishes: it shrinks into the tile or card it was played on (or the board, for a tile card
+// dropped there to pick its tiles), or flies back to its place in the hand.
 // every gesture ends as the same bridge calls that taps make
 // api: { snap(), card(i), tile(row, col), nothing(), peek(i), render() }
 export function attachPlayInput(board, hand, api) {
@@ -700,7 +701,8 @@ export function attachPlayInput(board, hand, api) {
     }
     if (!over(board, e)) return (api.render(), back());
     select(index);
-    if (card.kind !== "fixed") return back();
+    // a card that still needs its tiles picked is selected; its ghost sinks into the board like a played one
+    if (card.kind !== "fixed") return api.snap()?.selected === index ? { node: board, into: true } : back();
     const [target] = api.snap()?.candidate_tiles ?? [];
     if (!target) return back();
     playWithGhost(() => api.tile(...target));
