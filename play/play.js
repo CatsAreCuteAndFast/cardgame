@@ -1,6 +1,6 @@
 // The tester page: plays the levels in levels/pack.json.
 
-import { $, el, playPrompt, playStatus, renderSnapshot, attachPlayInput, setText } from "../editor/board.js";
+import { $, el, playPrompt, playStatus, renderSnapshot, attachPlayInput, setText, renderCell, setBoardShape, flipDuration } from "../editor/board.js";
 import * as bridge from "../editor/bridge.js";
 import { initGrain } from "../editor/grain.js";
 
@@ -14,6 +14,8 @@ let solved = new Set();
 let tab = "levels";
 let index = null;
 let page = null;
+let entering = false;
+const newlySolved = new Set();
 let snap = null;
 let playError = null;
 
@@ -62,6 +64,7 @@ function tap(call) {
   snap = callBridge(call);
   if (snap?.won && !solved.has(levelKey(pack[index]))) {
     solved.add(levelKey(pack[index]));
+    newlySolved.add(levelKey(pack[index]));
     writeStorage(SOLVED_KEY, [...solved]);
   }
   render();
@@ -110,27 +113,42 @@ function renderLevels() {
       ),
     ),
     el("h2", { class: "page-title" }, [page || "Levels", el("span", { class: "page-count", textContent: `${done}/${levels.length}` })]),
-    el(
-      "div",
-      { class: "level-grid" },
-      levels.map(({ entry, i }, n) =>
-        el(
-          "button",
-          {
-            class: "level-square" + (i === index ? " is-current" : "") + (solved.has(levelKey(entry)) ? " solved" : ""),
-            title: entry.name,
-            onclick: () => {
-              startLevel(i);
-              tab = "play";
-              render();
-              window.scrollTo(0, 0);
-            },
-          },
-          [el("span", { class: "number", textContent: String(n + 1) }), solved.has(levelKey(entry)) ? el("span", { class: "done", textContent: "✓" }) : null],
-        ),
-      ),
-    ),
+    levelBoard(levels),
   );
+}
+
+// the page's levels as a board of tiles: solved levels are lit, newly solved ones light up, and opening one flips it
+function levelBoard(levels) {
+  const board = el("div", { class: "board level-board" });
+  setBoardShape(board, 3, Math.ceil(levels.length / 3));
+  const total = flipDuration();
+  const cell = ({ entry, i }, n, anim) => {
+    const node = renderCell(
+      { type: "basic", flipped: anim ? anim.on : solved.has(levelKey(entry)), period: 0, link: null },
+      { classes: i === index ? ["candidate"] : [], grain: n, anim, onclick: () => enter(entry, i, n, node) },
+    );
+    node.title = entry.name;
+    node.querySelector(".face").append(el("span", { class: "counter level-number", textContent: String(n + 1) }));
+    return node;
+  };
+  const enter = (entry, i, n, node) => {
+    if (entering) return;
+    entering = true;
+    const wait = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : total;
+    node.replaceWith(cell({ entry, i }, n, { on: !solved.has(levelKey(entry)), elapsed: 0, total }));
+    setTimeout(() => {
+      entering = false;
+      startLevel(i);
+      tab = "play";
+      render();
+      window.scrollTo(0, 0);
+    }, wait);
+  };
+  levels.forEach((level, n) => {
+    const fresh = newlySolved.delete(levelKey(level.entry));
+    board.append(cell(level, n, fresh ? { on: true, elapsed: -200, total } : null));
+  });
+  return board;
 }
 
 function renderPlay() {
