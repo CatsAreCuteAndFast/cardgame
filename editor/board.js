@@ -433,6 +433,14 @@ function handMapping(step, oldCount, newCount) {
     : { pairs, gone: step.used_up ? [step.card] : [], fresh: copies };
 }
 
+// adds an animation class to a card and takes it off when that animation ends, so a later clone (the drag ghost) doesn't replay it
+function addAnim(node, name) {
+  node.classList.add(name);
+  const done = (e) => e.target === node && node.classList.remove(name);
+  node.addEventListener("animationend", done, { once: true });
+  node.addEventListener("animationcancel", done, { once: true });
+}
+
 // after a step rebuilt the hand: a played card stamps down, a used-up card burns in its slot (an undone one is dealt back from above),
 // a retarget's copy comes out of the card it copies and an undone copy shrinks away; cards that moved slide to their new place,
 // after the burn has mostly gone when a card burned
@@ -448,7 +456,7 @@ function animateHand(hand, track, map, oldNodes, oldRects) {
     if (!node || !oldRects[o]) continue;
     const dx = oldRects[o].left - node.getBoundingClientRect().left;
     if (Math.abs(dx) > 1 && !reducedMotion()) node.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: ms, delay, easing, fill: "backwards" });
-    if (!step.reverse && o === step.card) node.classList.add("played");
+    if (!step.reverse && o === step.card) addAnim(node, "played");
   }
   for (const n of map.fresh) {
     const node = nodes[n];
@@ -462,7 +470,7 @@ function animateHand(hand, track, map, oldNodes, oldRects) {
       );
     } else {
       node.style.setProperty("--from-y", step.reverse ? "-24px" : "24px");
-      node.classList.add("deal-in");
+      addAnim(node, "deal-in");
     }
   }
   for (const o of map.gone) {
@@ -628,7 +636,7 @@ export function attachPlayInput(board, hand, api) {
     const source = cardNode(press.index);
     if (!source) return (press = null);
     press.ghost = source.cloneNode(true);
-    press.ghost.classList.remove("selected", "candidate", "drop-target", "peeking");
+    press.ghost.classList.remove("selected", "candidate", "drop-target", "peeking", "played", "deal-in");
     press.ghost.classList.add("drag-ghost");
     placeGhost(e.clientX, e.clientY);
     document.body.append(press.ghost);
