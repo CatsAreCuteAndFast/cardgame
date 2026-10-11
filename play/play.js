@@ -79,7 +79,7 @@ function peek(i) {
 }
 
 function render() {
-  document.documentElement.style.setProperty("--top-h", `${document.querySelector(".top").offsetHeight}px`);
+  document.body.dataset.tab = tab;
   for (const button of document.querySelectorAll(".tab")) button.classList.toggle("active", button.dataset.tab === tab);
   for (const screen of document.querySelectorAll(".screen")) screen.classList.toggle("active", screen.id === tab);
   $("current-name").textContent = index === null ? "" : levelTitle(pack[index]);
@@ -234,6 +234,11 @@ function init() {
     render,
   });
   window.addEventListener("resize", render);
+  // the Play screen fills the visible viewport: --vh is the fallback for browsers without dvh units
+  const fitViewport = () => document.documentElement.style.setProperty("--vh", `${window.innerHeight}px`);
+  window.addEventListener("resize", fitViewport);
+  window.visualViewport?.addEventListener("resize", fitViewport);
+  fitViewport();
   render();
   $("loading").hidden = true;
   loadPack();

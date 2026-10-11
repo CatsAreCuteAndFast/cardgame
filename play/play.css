@@ -1,16 +1,37 @@
+/* the tester's own layout: the Levels tab is a normal page, the Play screen fills the visible viewport without scrolling */
+
 .pages button { min-height: 44px; font-weight: 600; }
 .page-title { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0 12px; }
 .page-count { color: var(--muted); font-size: .9rem; font-weight: 400; }
 .level-board { max-width: 420px; }
 
-main:has(#play.active) { padding-bottom: 0; }
-#play.active {
+/* the Play screen: header, then the screen filling the rest of the viewport (vh, then innerHeight from play.js, then dvh where known) */
+body[data-tab="play"] {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - var(--top-h, 90px) - 16px);
+  height: 100vh;
+  height: var(--vh, 100vh);
+  height: 100dvh;
+  overflow: hidden;
+}
+body[data-tab="play"] .top { flex: none; }
+body[data-tab="play"] main {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+  overflow: clip;
+}
+#play.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
 }
-#play > * { flex: none; }
+#play > * { flex: none; min-width: 0; }
 #play > .row { margin: 6px 0; }
 #play .board-area {
   flex: 1 1 0;
@@ -22,6 +43,7 @@ main:has(#play.active) { padding-bottom: 0; }
 }
 #play-board {
   position: relative;
+  top: auto;
   margin: 0;
   width: min(100cqw, (100cqh - 12px) * var(--cols, 1) / var(--rows, 1));
   max-width: 520px;
@@ -29,10 +51,60 @@ main:has(#play.active) { padding-bottom: 0; }
 #play-hand {
   margin: 0 -16px;
   padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+  justify-content: flex-start;
 }
-#play .play-buttons button { min-height: 40px; padding: 0 10px; }
+/* centre the cards without clipping the first one when they overflow (Safari lacks `safe center`) */
+#play-hand > .card:first-child { margin-left: auto; }
+#play-hand > .card:last-child { margin-right: auto; }
+
+/* the status row must fit the narrowest phones, or the page grows sideways */
+#play .row.status { gap: 8px; }
+#play-status { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#play .play-buttons button { min-height: 40px; min-width: 40px; padding: 0 10px; white-space: nowrap; }
+@media (max-width: 419px) {
+  #play .play-buttons button { padding: 0 8px; }
+  #play .play-buttons .label { display: none; }
+  #play .play-buttons .icon { font-size: 1.2em; }
+}
+@media (max-width: 359px) {
+  #play .row.prompt { font-size: .82rem; line-height: 1.2; }
+  #play-prompt { max-height: 3.6em; }
+}
+@media (max-width: 319px) {
+  #play .row.status { font-size: .88rem; }
+  #play .play-buttons { gap: 4px; }
+  #play .play-buttons button { min-width: 36px; padding: 0 6px; }
+}
+
+/* short landscape screens (a phone on its side): the board on the left, status, prompt and hand on the right */
+@media (orientation: landscape) and (max-height: 560px) {
+  body[data-tab="play"] .top { display: flex; align-items: center; gap: 12px; padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 6px; }
+  body[data-tab="play"] .tabs { flex: 1 1 auto; max-width: 320px; margin: 0; }
+  body[data-tab="play"] .current { flex: 1 1 auto; margin: 0; text-align: right; }
+  body[data-tab="play"] main { padding-top: 8px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  #play.active {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "board status" "board error" "board prompt" "board hand";
+    column-gap: 16px;
+    align-items: center;
+  }
+  #play > * { grid-column: auto; }
+  #play > .row.status { grid-area: status; margin: 0; }
+  #play .play-buttons .label { display: none; }
+  #play .play-buttons button { padding: 0 8px; }
+  #play .play-buttons .icon { font-size: 1.2em; }
+  #play > #play-error { grid-area: error; }
+  #play .board-area { grid-area: board; min-height: 0; align-self: stretch; }
+  #play-board { width: min(100cqw, 100cqh * var(--cols, 1) / var(--rows, 1)); }
+  #play > .row.prompt { grid-area: prompt; margin: 0; align-self: end; }
+  #play-hand { grid-area: hand; margin: 0; padding: 14px 4px calc(8px + env(safe-area-inset-bottom)); }
+  #play-empty { grid-column: 1 / -1; }
+}
 
 /* the editor's wide layout splits #play into two columns; the tester keeps one */
 @media (min-width: 900px) {
   main { max-width: 720px; }
+  body[data-tab="play"] main { padding-left: 16px; padding-right: 16px; }
 }
