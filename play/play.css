@@ -21,7 +21,7 @@ main:has(#play.active) { padding-bottom: 0; }
   justify-content: center;
 }
 #play-board {
-  position: static;
+  position: relative;
   margin: 0;
   width: min(100cqw, (100cqh - 12px) * var(--cols, 1) / var(--rows, 1));
   max-width: 520px;

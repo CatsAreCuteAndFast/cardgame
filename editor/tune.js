@@ -45,6 +45,7 @@ const GROUPS = [
     { name: "--ring-scale", label: "Fade-in starts at ×", unit: "", min: 0.8, max: 1.3, step: 0.01 },
     ms("--ants-ms", "Dashes loop every", 8000),
     ms("--lock-ms", "Dashes fade for", 1000), ease("--lock-ease", "Dash fade easing"),
+    ms("--lock-hold", "Lock stays after a play for", 2000),
     ms("--pop-ms", "Pick pops for", 1000), ease("--pop-ease", "Pop easing"),
     { name: "--pop-scale", label: "Pop starts at ×", unit: "", min: 1, max: 1.6, step: 0.01 },
   ]],
@@ -63,9 +64,10 @@ const GROUPS = [
     ms("--tick-start", "Tick starts", 1000), ms("--tick-ms", "Tick lasts", 1000), ease("--tick-ease", "Tick easing"),
   ]],
   ["Level won", [
-    ms("--win-start", "Wave starts"), ms("--win-stagger", "Per tile of distance", 300), ms("--win-ms", "Each hop lasts"),
-    { name: "--win-hop", label: "Hop height (− is up)", unit: "%", min: -20, max: 0, step: 0.5 },
+    ms("--win-start", "Wash starts"), ms("--win-stagger", "Per tile of distance", 300), ms("--win-ms", "Each tile's sheen lasts"),
+    { name: "--win-swell", label: "Tiles swell to ×", unit: "", min: 1, max: 1.15, step: 0.005 },
     { name: "--win-flash", label: "Sheen strength", unit: "", min: 0, max: 1, step: 0.05 },
+    { name: "--wash-opacity", label: "Ring strength", unit: "", min: 0, max: 1, step: 0.05 },
     ms("--settle-start", "Hand settles after"), ms("--settle-ms", "Hand settles for"),
   ]],
   ["Cards", [
@@ -73,7 +75,8 @@ const GROUPS = [
     { name: "--card-lift", label: "Lift height (− is up)", unit: "px", min: -20, max: 0, step: 1 },
     ms("--played-ms", "Stamp lasts", 1000),
     ms("--deal-ms", "Deal lasts", 1000), ease("--deal-ease", "Deal easing"),
-    ms("--fly-ms", "Fly into board lasts", 1000), ease("--fly-ease", "Fly easing"),
+    ms("--burn-ms", "Burn lasts", 2000), ease("--burn-ease", "Ember easing"),
+    ms("--fly-ms", "Shrink into board lasts", 1000), ease("--fly-ease", "Shrink easing"),
     ms("--return-ms", "Ghost returns for", 1000),
   ]],
   ["New game", [

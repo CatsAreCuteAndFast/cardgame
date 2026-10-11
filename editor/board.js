@@ -113,15 +113,14 @@ function syncAnts(board) {
   for (const anim of board.getAnimations({ subtree: true })) if (anim.animationName === "ants") anim.startTime = 0;
 }
 
-// per board: the picked tiles last shown, so only a newly picked tile pops its outline in and presses
+// per board: the picked tiles last shown, so only a newly picked tile pops its outline in and presses;
+// returns the keys ("row,col") that were picked last time
 const pickHistory = new WeakMap();
 
-function newlyPicked(board, snap) {
+function lastPicked(board, snap) {
   const prev = pickHistory.get(board);
-  const keys = snap.picked.map(([row, col]) => `${row},${col}`);
-  pickHistory.set(board, { game: snap.game_id, keys });
-  const old = prev && prev.game === snap.game_id ? prev.keys : [];
-  return keys.filter((key) => !old.includes(key));
+  pickHistory.set(board, { game: snap.game_id, keys: snap.picked.map(([row, col]) => `${row},${col}`) });
+  return prev && prev.game === snap.game_id ? prev.keys : [];
 }
 
 // per board: the last snapshot shown, when its last one-play step (a play, undo or redo) happened and which move it was,
@@ -168,21 +167,10 @@ function flipAnimations(track) {
   });
 }
 
-// where the last step happened on the board, for the win wave's origin and where a used-up card flies to: the middle of the tiles that
-// changed (or of the swapped tiles), else the board's middle; in cell units [row, col]
-function stepOrigin(track) {
-  const { snap, before, step } = track;
-  const changed = [];
-  snap.cells.forEach((cell, index) => {
-    if (before && cell.flipped !== before.cells[index].flipped) changed.push([Math.floor(index / snap.width), index % snap.width]);
-  });
-  const points = changed.length ? changed : step?.cells?.length ? step.cells : [[(snap.height - 1) / 2, (snap.width - 1) / 2]];
-  return [points.reduce((sum, [row]) => sum + row, 0) / points.length, points.reduce((sum, [, col]) => sum + col, 0) / points.length];
-}
-
 // the one-shot animations a step gives the tile at index: swapped tiles slide across (the first pick over the other), a picked tile that
-// didn't change presses and comes back (dud), a timer that changed ticks, and when the step won every tile hops in a wave from the origin
-function stepExtras(track, index, origin) {
+// didn't change presses and comes back (dud), a timer that changed ticks, the tiles a play used show the lock ring for a moment (locked),
+// and when the step won a wash runs out from the board's middle, swelling each tile a little with a sheen over its face
+function stepExtras(track, index, centreRow, centreCol) {
   const { step, before, snap } = track;
   const elapsed = performance.now() - track.stepAt;
   const row = Math.floor(index / snap.width);
@@ -195,6 +183,7 @@ function stepExtras(track, index, origin) {
   const cell = snap.cells[index];
   const old = before.cells[index];
   const picked = step.cells.findIndex((coord) => sameCoord(coord, [row, col]));
+  if (picked !== -1 && !step.reverse && elapsed < cssMs("--lock-hold") + cssMs("--lock-ms")) cellClasses.push("locked");
   if (step.effect === "swap" && step.cells.length === 2 && picked !== -1 && elapsed < cssMs("--swap-ms")) {
     // the tile now in the second pick's cell is the one picked first: it travels over the other
     const other = step.cells[1 - picked];
@@ -206,7 +195,7 @@ function stepExtras(track, index, origin) {
   }
   if (old.counter !== cell.counter && elapsed < cssMs("--tick-start") + cssMs("--tick-ms")) tick = true;
   if (snap.won && !before.won) {
-    const distance = Math.hypot(row - origin[0], col - origin[1]);
+    const distance = Math.hypot(row - centreRow, col - centreCol);
     if (elapsed < cssMs("--win-start") + distance * cssMs("--win-stagger") + cssMs("--win-ms")) {
       classes.push("win");
       style += `--win-d:${distance.toFixed(2)};`;
@@ -394,17 +383,21 @@ function cardClone(node, rect) {
   return clone;
 }
 
-// a card leaving the hand: flies to [x, y] shrinking (into the board or a card), or just shrinks away where it is
-function flyAway(node, rect, to) {
+// a card leaving the hand: an undone copy shrinks away where it is
+function shrinkAway(node, rect) {
   if (reducedMotion()) return;
   const clone = cardClone(node, rect);
-  const frames = to
-    ? [{ transform: "none", opacity: 1 }, { transform: `translate(${to[0] - rect.left - rect.width / 2}px, ${to[1] - rect.top - rect.height / 2}px) scale(.3)`, opacity: 0 }]
-    : [{ transform: "none", opacity: 1 }, { transform: "scale(.8)", opacity: 0 }];
-  const duration = cssMs(to ? "--fly-ms" : "--return-ms");
-  const anim = clone.animate(frames, { duration, easing: cssValue(to ? "--fly-ease" : "--card-ease"), fill: "forwards" });
+  const duration = cssMs("--return-ms");
+  const anim = clone.animate([{ transform: "none", opacity: 1 }, { transform: "scale(.8)", opacity: 0 }], { duration, easing: cssValue("--card-ease"), fill: "forwards" });
   anim.onfinish = anim.oncancel = () => clone.remove();
   setTimeout(() => clone.remove(), duration + 100);
+}
+
+// a used-up card burns: an ember line climbs the card leaving char behind, then the husk fades (.burn in editor.css); the node is removed after
+export function burn(node) {
+  node.append(el("div", { class: "ember" }));
+  node.classList.add("burn");
+  setTimeout(() => node.remove(), cssMs("--burn-ms") + 100);
 }
 
 // which hand position each card had before a step: pairs [old index, new index] for cards in both hands, old indices that are gone,
@@ -423,20 +416,21 @@ function handMapping(step, oldCount, newCount) {
     : { pairs, gone: step.used_up ? [step.card] : [], fresh: copies };
 }
 
-// after a step rebuilt the hand: cards that moved slide to their new place, a played card stamps down, a used-up card flies into the board
-// (an undone one comes back from it), a retarget's copy comes out of the card it copies and an undone copy shrinks away
-function animateHand(hand, board, track, map, oldNodes, oldRects) {
+// after a step rebuilt the hand: a played card stamps down, a used-up card burns in its slot (an undone one is dealt back from above),
+// a retarget's copy comes out of the card it copies and an undone copy shrinks away; cards that moved slide to their new place,
+// after the burn has mostly gone when a card burned
+function animateHand(hand, track, map, oldNodes, oldRects) {
   const nodes = [...hand.querySelectorAll(".card[data-index]")];
   const { step } = track;
   const ms = cssMs("--deal-ms");
   const easing = cssValue("--deal-ease");
-  const origin = stepOrigin(track);
-  const focus = findCell(board, [Math.round(origin[0]), Math.round(origin[1])]) ?? board;
+  const burning = map.gone.length > 0 && !step.reverse;
+  const delay = burning ? cssMs("--burn-ms") * 0.6 : 0;
   for (const [o, n] of map.pairs) {
     const node = nodes[n];
     if (!node || !oldRects[o]) continue;
     const dx = oldRects[o].left - node.getBoundingClientRect().left;
-    if (Math.abs(dx) > 1 && !reducedMotion()) node.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: ms, easing });
+    if (Math.abs(dx) > 1 && !reducedMotion()) node.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: ms, delay, easing, fill: "backwards" });
     if (!step.reverse && o === step.card) node.classList.add("played");
   }
   for (const n of map.fresh) {
@@ -456,9 +450,21 @@ function animateHand(hand, board, track, map, oldNodes, oldRects) {
   }
   for (const o of map.gone) {
     if (!oldNodes[o]) continue;
-    if (step.reverse) flyAway(oldNodes[o], oldRects[o], null);
-    else if (!ghostPlays) flyAway(oldNodes[o], oldRects[o], step.effect === "retarget" ? centre(nodes[step.target < step.card ? step.target : step.target - 1] ?? hand) : centre(focus));
+    if (step.reverse) shrinkAway(oldNodes[o], oldRects[o]);
+    else if (!ghostPlays && !reducedMotion()) burn(cardClone(oldNodes[o], oldRects[o]));
   }
+}
+
+const STEP_CLASSES = new Set(["swap-over", "swap-under", "locked", "lock-in"]);
+const STEP_KEEP_MS = 1200;
+
+// the win's wash: a soft ring that grows out from the board's middle, timed to reach the farthest tile as its sheen starts
+function wash(snap, centreRow, centreCol) {
+  const farthest = Math.hypot(centreRow, centreCol);
+  const ms = Math.round(cssMs("--win-start") + farthest * cssMs("--win-stagger") + cssMs("--win-ms") * 0.6);
+  const node = el("div", { class: "wash", style: `--wash-ms:${ms}ms;` });
+  setTimeout(() => node.remove(), cssMs("--win-start") + ms + 100);
+  return node;
 }
 
 // renders a snapshot. between plays the board and hand are updated in place (classes and badges), so CSS transitions and
@@ -475,36 +481,42 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   board.classList.toggle("picking", pickingTiles);
   board.classList.toggle("won", snap.won);
   board.classList.toggle("over", snap.game_over);
-  const fresh = newlyPicked(board, snap);
+  const wasPicked = lastPicked(board, snap);
   const cellClasses = (row, col) => {
     const classes = [];
     const candidate = has(snap.candidate_tiles, row, col);
-    if (has(snap.picked, row, col)) classes.push("picked", ...(fresh.includes(`${row},${col}`) ? ["lock-in"] : []));
+    if (has(snap.picked, row, col)) classes.push("picked", ...(wasPicked.includes(`${row},${col}`) ? [] : ["lock-in"]));
     else if (candidate) classes.push(snap.targeting ? "targeting" : "candidate");
     return classes;
   };
+  const centreRow = (snap.height - 1) / 2;
+  const centreCol = (snap.width - 1) / 2;
 
-  const rebuild = !track.sameGame || track.stepped || board.children.length !== snap.cells.length;
+  const cells = board.querySelectorAll(".cell");
+  const rebuild = !track.sameGame || track.stepped || cells.length !== snap.cells.length;
   if (rebuild) {
     board.replaceChildren();
     board.classList.toggle("intro", !track.sameGame);
     const anims = flipAnimations(track);
-    const origin = stepOrigin(track);
-    const centreRow = (snap.height - 1) / 2;
-    const centreCol = (snap.width - 1) / 2;
     snap.cells.forEach((cell, index) => {
       const row = Math.floor(index / snap.width);
       const col = index % snap.width;
-      const extra = track.stepped ? stepExtras(track, index, origin) : { classes: [], cellClasses: [], style: "", tick: false };
+      const extra = track.stepped ? stepExtras(track, index, centreRow, centreCol) : { classes: [], cellClasses: [], style: "", tick: false };
       if (!track.sameGame) extra.style += `--d:${Math.hypot(row - centreRow, col - centreCol).toFixed(2)};`;
+      // a tile a play used shows the lock ring for a moment; it pops in unless it was already locked
+      if (extra.cellClasses.includes("locked") && !wasPicked.includes(`${row},${col}`)) extra.cellClasses.push("lock-in");
       const node = renderCell(cell, { classes: [...cellClasses(row, col), ...extra.cellClasses], grain: index, anim: anims[index], tile: extra });
       node.dataset.row = row;
       node.dataset.col = col;
       board.append(node);
     });
+    if (track.stepped && snap.won && track.before && !track.before.won) board.append(wash(snap, centreRow, centreCol));
   } else {
-    [...board.children].forEach((node, index) => {
-      node.className = ["cell", ...cellClasses(Math.floor(index / snap.width), index % snap.width)].join(" ");
+    // the step's classes stay while its animations run, so a tap mid-animation doesn't cut them short
+    const running = performance.now() - track.stepAt < STEP_KEEP_MS;
+    cells.forEach((node, index) => {
+      const kept = running ? [...node.classList].filter((name) => STEP_CLASSES.has(name)) : [];
+      node.className = ["cell", ...cellClasses(Math.floor(index / snap.width), index % snap.width), ...kept].join(" ");
     });
   }
   showPreview(board, snap.preview, snap.blocked, card);
@@ -525,7 +537,7 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     });
     window.scrollTo(scroll[0], scroll[1]);
     hand.scrollLeft = scroll[2];
-    if (map) animateHand(hand, board, track, map, oldNodes, oldRects);
+    if (map) animateHand(hand, track, map, oldNodes, oldRects);
     return;
   }
   oldNodes.forEach((node, index) => {
@@ -645,7 +657,7 @@ export function attachPlayInput(board, hand, api) {
       select(index);
       if (api.snap()?.candidate_cards.includes(targetIndex)) {
         playWithGhost(() => api.card(targetIndex));
-        return { node: cardNode(targetIndex < index ? targetIndex : targetIndex - 1) ?? hand, into: true };
+        return { node: cardNode(targetIndex < index ? targetIndex : targetIndex - 1) ?? hand, into: true, burnt: card.single_use };
       }
       api.nothing();
       shake(cardNode(targetIndex));
@@ -657,7 +669,7 @@ export function attachPlayInput(board, hand, api) {
     const [target] = api.snap()?.candidate_tiles ?? [];
     if (!target) return back();
     playWithGhost(() => api.tile(...target));
-    return { node: findCell(board, target) ?? board, into: true };
+    return { node: findCell(board, target) ?? board, into: true, burnt: card.single_use };
   }
 
   function playWithGhost(play) {
@@ -669,10 +681,12 @@ export function attachPlayInput(board, hand, api) {
     }
   }
 
-  // the ghost shrinks into the node it was played on, or flies back to it (its card in the hand) and fades as it lands
-  function flyGhost(ghost, { node, into }) {
+  // a used-up card burns where it was dropped; otherwise the ghost shrinks into the node it was played on,
+  // or flies back to it (its card in the hand) and fades as it lands
+  function flyGhost(ghost, { node, into, burnt }) {
     if (!ghost) return;
     if (!node || reducedMotion()) return ghost.remove();
+    if (burnt) return burn(ghost);
     const [x, y] = centre(node);
     const ms = cssMs(into ? "--fly-ms" : "--return-ms");
     const from = { translate: ghost.style.translate, transform: "translate(-50%, -75%) rotate(-4deg) scale(1)" };
@@ -685,21 +699,20 @@ export function attachPlayInput(board, hand, api) {
     setTimeout(() => ghost.remove(), ms + 100);
   }
 
+  // the neighbour under the finger shows as picked (its lock ring pops in) until the finger leaves it
   function moveSwipe(e) {
-    const cell = under(e, ".cell[data-row]");
-    const to = cell ? cellCoord(cell) : null;
-    const coords = to && !sameCoord(to, press.from) && isNeighbour(press.from, to) ? [press.from, to] : [press.from];
-    showPreview(board, coords, [], null);
+    const cell = under(e, ".cell.targeting[data-row]");
+    if (cell === press.hover) return;
+    press.hover?.classList.remove("picked", "lock-in");
+    press.hover = cell;
+    cell?.classList.add("picked", "lock-in");
   }
 
   function endSwipe(e) {
     const cell = under(e, ".cell[data-row]");
     const to = cell ? cellCoord(cell) : null;
-    if (!to || !isNeighbour(press.from, to)) return api.render();
-    api.tile(...press.from);
-    const snap = api.snap();
-    if (snap?.candidate_tiles.some((coord) => sameCoord(coord, to))) api.tile(...to);
-    else shake(findCell(board, to));
+    if (to && api.snap()?.candidate_tiles.some((coord) => sameCoord(coord, to))) return api.tile(...to);
+    api.render();
   }
 
   function finish(e, cancelled) {
@@ -709,6 +722,7 @@ export function attachPlayInput(board, hand, api) {
       suppressClickUntil = performance.now() + 50;
       return api.render();
     }
+    if (press?.kind === "swipe") suppressClickUntil = performance.now() + 50;
     if (!press?.dragging) return (press = null);
     const { ghost, kind, index } = press;
     clearDropTargets();
@@ -735,10 +749,12 @@ export function attachPlayInput(board, hand, api) {
     press.timer = setTimeout(startLongPress, LONG_PRESS);
   });
   hand.addEventListener("contextmenu", (e) => e.target.closest(".card") && e.preventDefault());
+  // a swipe picks its first tile as soon as it is touched (the click that follows is dropped), so the lock ring and the neighbours show at once
   board.addEventListener("pointerdown", (e) => {
     const cell = e.target.closest(".cell[data-row]");
     if (!e.isPrimary || !cell || !canSwipe(api.snap()) || !cell.classList.contains("targeting")) return;
-    press = { kind: "swipe", from: cellCoord(cell), x: e.clientX, y: e.clientY, dragging: false };
+    press = { kind: "swipe", from: cellCoord(cell), x: e.clientX, y: e.clientY, dragging: false, hover: null };
+    api.tile(...press.from);
   });
   document.addEventListener("pointermove", (e) => {
     if (!press || !e.isPrimary) return;

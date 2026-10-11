@@ -118,6 +118,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 
 .board {
   --gap: 4px;
+  position: relative;
   display: grid;
   gap: var(--gap);
   margin: 12px auto;
@@ -309,11 +310,15 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --tick-start: 120ms;
   --tick-ms: 320ms;
   --tick-ease: cubic-bezier(.2, 1.2, .4, 1);
-  --win-start: 380ms;
+  --lock-hold: 450ms;
+  --win-start: 300ms;
   --win-stagger: 90ms;
-  --win-ms: 560ms;
-  --win-hop: -7%;
-  --win-flash: .3;
+  --win-ms: 600ms;
+  --win-swell: 1.03;
+  --win-flash: .35;
+  --wash-opacity: .28;
+  --burn-ms: 750ms;
+  --burn-ease: cubic-bezier(.4, 0, .6, 1);
   --intro-ms: 320ms;
   --intro-stagger: 40ms;
   --intro-scale: .9;
@@ -366,24 +371,76 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 }
 .counter.tick.ready { --tick-scale: 1.6; }
 @keyframes tick { from { scale: var(--tick-scale, 1.3); opacity: .3; } }
-/* winning: a wave out from the tiles that flipped last; each tile hops and a white sheen passes over its face */
+/* the tiles a play used show the lock ring for a moment (it pops in if it wasn't showing), then it fades */
+.cell.locked .ring.lock {
+  display: block;
+  animation: fade-out var(--lock-ms) ease-out both;
+  animation-delay: calc(var(--step-delay, 0ms) + var(--lock-hold));
+}
+.cell.locked.lock-in .ring.lock {
+  animation: pop var(--pop-ms) var(--pop-ease) both, fade-out var(--lock-ms) ease-out both;
+  animation-delay: var(--step-delay, 0ms), calc(var(--step-delay, 0ms) + var(--lock-hold));
+}
+/* winning: a cleansing wash runs out from the board's middle: a soft ring grows over the board, and as it passes each tile
+   the tile swells a little and a white sheen passes over its face, later the farther the tile is from the middle */
 .tile.win,
 .tile.win .flash {
   animation-duration: var(--win-ms);
   animation-fill-mode: both;
+  animation-timing-function: ease-in-out;
   animation-delay: calc(var(--step-delay, 0ms) + var(--win-start) + var(--win-d, 0) * var(--win-stagger));
 }
-.tile.win { animation-name: hop; }
+.tile.win { animation-name: swell; }
 .tile.win .flash { animation-name: flash; }
-@keyframes hop {
-  0% { translate: 0 0; animation-timing-function: cubic-bezier(.2, .7, .3, 1); }
-  40% { translate: 0 var(--win-hop); animation-timing-function: cubic-bezier(.5, 0, .7, .4); }
-  100% { translate: 0 0; }
-}
+@keyframes swell { 40% { scale: var(--win-swell); } }
 @keyframes flash {
   0% { opacity: 0; }
   35% { opacity: var(--win-flash); }
   100% { opacity: 0; }
+}
+.board { overflow: hidden; }
+.wash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(circle, transparent 54%, rgb(255 255 255 / var(--wash-opacity)) 62%, transparent 70%);
+  scale: 0;
+  animation: wash var(--wash-ms, 1000ms) cubic-bezier(.2, .5, .4, 1) both;
+  animation-delay: calc(var(--step-delay, 0ms) + var(--win-start));
+}
+@keyframes wash {
+  0% { scale: 0; opacity: 1; }
+  70% { opacity: 1; }
+  100% { scale: 2.4; opacity: 0; }
+}
+/* a used-up card burns in its slot: an ember line climbs the card leaving char behind, then the husk fades and shrinks a little.
+   the ember layer is twice the card: clear in its top half, the glowing line in the middle, char below; it slides up by half its height */
+.card.burn {
+  overflow: visible;
+  clip-path: inset(0 round var(--radius));
+  animation: burn-card var(--burn-ms) ease-in both;
+}
+.ember {
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -6px;
+  height: calc(200% + 24px);
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0 46%, #fff1b8 48%, #ff8a3d 49.5%, #7a2e10 51.5%, #2a161a 55%, #1a1016 100%);
+  animation: ember var(--burn-ms) var(--burn-ease) both;
+}
+@keyframes ember { from { translate: 0 0; } to { translate: 0 -50%; } }
+@keyframes burn-card {
+  0%, 70% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: .94; }
 }
 /* a new game: the tiles settle in from the middle outwards and the cards are dealt in */
 .board.intro .tile {
@@ -408,7 +465,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 @keyframes pop-in { from { scale: .8; opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile, .tile *, .tile *::after, .tile::before, .tile::after, .card, .hand, .board, .text-in, .row.prompt button, .drag-ghost, .card-fly {
+  .tile, .tile *, .tile *::after, .tile::before, .tile::after, .card, .ember, .wash, .hand, .board, .text-in, .row.prompt button, .drag-ghost, .card-fly {
     animation: none !important;
     transition: none !important;
   }
