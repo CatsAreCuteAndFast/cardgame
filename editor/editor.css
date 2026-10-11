@@ -200,6 +200,11 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   opacity: 0;
 }
 .tile.flipped .light { transform: none; }
+/* a three-state tile's half step lights a smaller disc; its two pips show how far along it is */
+.tile.half .light { transform: scale(.5); }
+.pips { position: absolute; top: 8%; right: 9%; display: flex; gap: 4cqw; }
+.pips i { width: 9cqw; height: 9cqw; border-radius: 50%; box-shadow: inset 0 0 0 1.6cqw #ffffffb0; }
+.tile.half .pips i:first-child, .tile.flipped .pips i { background: #fff; }
 .tile.flipped .glow { opacity: 1; }
 .tile.ns .grain { display: none; }
 .tile.ns .shade {
@@ -282,8 +287,13 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 @keyframes press-out { from { transform: translateY(var(--press)); } to { transform: translateY(0); } }
 @keyframes base-on { from { opacity: 0; } to { opacity: 1; } }
 @keyframes base-off { from { opacity: 1; } to { opacity: 0; } }
-@keyframes light-on { from { transform: scale(0); } to { transform: scale(1); } }
-@keyframes light-off { from { transform: scale(1); } to { transform: scale(0); } }
+/* --l-from/--l-to (set by renderCell) let a three-state tile's light grow or shrink between 0, .5 and 1 */
+@keyframes light-on { from { transform: scale(var(--l-from, 0)); } to { transform: scale(var(--l-to, 1)); } }
+@keyframes light-off { from { transform: scale(var(--l-from, 1)); } to { transform: scale(var(--l-to, 0)); } }
+/* to or from half without being lit: only the light grows or shrinks */
+.tile.anim-half .light {
+  animation: light-on var(--light-ms) var(--light-ease) calc(var(--anim-delay, 0ms) + var(--light-start)) both;
+}
 @keyframes glow-on { from { opacity: 0; } to { opacity: 1; } }
 @keyframes glow-off { from { opacity: 1; } to { opacity: 0; } }
 /* past the rest position by --r-depth (down when positive), back the other way by --recoil-back of that, then settle */
@@ -317,7 +327,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --win-swell: 1.03;
   --win-flash: .35;
   --wash-opacity: .28;
-  --burn-ms: 750ms;
+  --burn-ms: 900ms;
   --burn-ease: cubic-bezier(.4, 0, .6, 1);
   --intro-ms: 320ms;
   --intro-stagger: 40ms;
@@ -339,10 +349,10 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --text-ms: 220ms;
   --btn-ms: 120ms;
 }
-/* tapping a tile presses it like a button: a newly picked tile, and a picked tile that a flip left unchanged (dud).
-   not while the tile is flipping, which has its own press */
-.cell.lock-in .tile:not(.anim-on, .anim-off) .face,
-.tile.dud:not(.anim-on, .anim-off) .face {
+/* tapping a tile presses it like a button: a newly picked tile (.press, which board.js adds only while the tile isn't flipping and takes
+   off again after --tap-ms, so the press can't start late when a flip's classes come off), and a picked tile that a flip left unchanged (dud) */
+.cell.press .face,
+.tile.dud .face {
   animation: tap-press var(--tap-ms) both;
   animation-delay: var(--step-delay, 0ms);
 }
@@ -419,12 +429,12 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   70% { opacity: 1; }
   100% { scale: 2.4; opacity: 0; }
 }
-/* a used-up card burns in its slot: an ember line climbs the card leaving char behind, then the husk fades and shrinks a little.
-   the ember layer is twice the card: clear in its top half, the glowing line in the middle, char below; it slides up by half its height */
+/* a used-up card burns away in its slot: the card is eaten from the bottom up (its clip rises) behind a glowing ember edge.
+   the ember layer is twice the card: clear in its top half, the glowing band in the middle; it slides up by half its height, so the band
+   stays on the rising clip edge. both use --burn-ease */
 .card.burn {
   overflow: visible;
-  clip-path: inset(0 round var(--radius));
-  animation: burn-card var(--burn-ms) ease-in both;
+  animation: burn-card var(--burn-ms) var(--burn-ease) both;
 }
 .ember {
   position: absolute;
@@ -434,13 +444,13 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   height: calc(200% + 24px);
   z-index: 3;
   pointer-events: none;
-  background: linear-gradient(to bottom, transparent 0 46%, #fff1b8 48%, #ff8a3d 49.5%, #7a2e10 51.5%, #2a161a 55%, #1a1016 100%);
+  background: linear-gradient(to bottom, transparent 0 45.5%, #fff8dc 47.5%, #ffc24d 48.5%, #ff6a1a 49.5%, #a3240a 51%, #2a0c08 52.5%, #2a0c08 100%);
   animation: ember var(--burn-ms) var(--burn-ease) both;
 }
 @keyframes ember { from { translate: 0 0; } to { translate: 0 -50%; } }
 @keyframes burn-card {
-  0%, 70% { opacity: 1; scale: 1; }
-  100% { opacity: 0; scale: .94; }
+  from { clip-path: inset(0 0 0 0 round var(--radius)); }
+  to { clip-path: inset(0 0 100% 0 round var(--radius)); }
 }
 /* a new game: the tiles settle in from the middle outwards and the cards are dealt in */
 .board.intro .tile {
@@ -486,6 +496,18 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   text-shadow: 0 0 0.15em #000a;
   font-size: min(30cqw, 2.2rem);
   font-weight: 700;
+}
+/* a neighbour timer: four marks pointing at the neighbours whose flips count it down */
+.counter.near::before {
+  content: "";
+  position: absolute;
+  inset: 5%;
+  background:
+    linear-gradient(#fffc, #fffc) 50% 0 / 14cqw 3cqw,
+    linear-gradient(#fffc, #fffc) 50% 100% / 14cqw 3cqw,
+    linear-gradient(#fffc, #fffc) 0 50% / 3cqw 14cqw,
+    linear-gradient(#fffc, #fffc) 100% 50% / 3cqw 14cqw;
+  background-repeat: no-repeat;
 }
 .link { bottom: 4%; left: 6%; padding: 2px 4px; border-radius: 4px; color: #fff; }
 .order {
@@ -551,6 +573,9 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   pointer-events: none;
 }
 .cell.preview .tile.flipped::before { background: color-mix(in srgb, var(--tile) 60%, transparent); }
+.cell.preview .tile.three:not(.flipped, .half)::before {
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--flipped) 60%, transparent) 33cqw, transparent 34cqw);
+}
 .board.dragging .cell .tile::before,
 .board.dragging .cell .ring,
 .board.dragging .cell.blocked .tile::after { opacity: var(--drag, 0); }

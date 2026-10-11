@@ -2,7 +2,7 @@
 // out exactly that plan, so the preview can't drift from what a play does.
 // Adding an effect means adding an entry here; the editor picks it up through catalog().
 
-import { TILE_TYPES, canFlipAt } from "./types.js";
+import { TILE_TYPES, canFlipAt, flipTile } from "./types.js";
 
 const swappable = (state, cell) => TILE_TYPES[state.tiles[cell].type].canSwap;
 
@@ -20,14 +20,12 @@ export const EFFECTS = {
         if (link === null) affected.add(cell);
         else state.tiles.forEach((tile, other) => tile.link === link && affected.add(other));
       }
-      return {
-        affected: [...affected].sort((a, b) => a - b),
-        blocked: cells.filter((cell) => !canFlipAt(state, cell)),
-      };
+      const sorted = [...affected].sort((a, b) => a - b);
+      return { affected: sorted, flips: sorted, blocked: cells.filter((cell) => !canFlipAt(state, cell)) };
     },
     apply(state, cells) {
       const tiles = [...state.tiles];
-      for (const cell of this.plan(state, cells).affected) tiles[cell] = { ...tiles[cell], flipped: !tiles[cell].flipped };
+      for (const cell of this.plan(state, cells).affected) tiles[cell] = flipTile(tiles[cell]);
       return tiles;
     },
   },
@@ -49,7 +47,7 @@ export const EFFECTS = {
     canPick: swappable,
     plan(state, cells) {
       const ok = cells.length === 2 && cells.every((cell) => swappable(state, cell));
-      return { affected: ok ? [...cells] : [], blocked: [] };
+      return { affected: ok ? [...cells] : [], flips: [], blocked: [] };
     },
     apply(state, cells) {
       if (cells.length !== 2) throw new Error(`swap expects 2 tiles, got ${cells.length}`);

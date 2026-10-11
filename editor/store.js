@@ -38,6 +38,7 @@ export function normalizeLevels() {
   for (const level of store.levels) {
     if (!store.folders.some((folder) => folder.id === level.folder)) level.folder = null;
     if (!Array.isArray(level.data.flipped)) level.data.flipped = [];
+    if (!Array.isArray(level.data.half)) level.data.half = [];
     if (!Array.isArray(level.data.counters)) level.data.counters = [];
     level.data = upgradeData(level.data);
   }
@@ -101,6 +102,7 @@ export function blankLevel(width = 3, height = 3) {
     substrates: grid(width, height, () => catalog.substrates[0].id),
     links: [],
     flipped: [],
+    half: [],
     counters: [],
     cards: [{ effect: "flip", target: { kind: "any", count: 1 } }],
   };
@@ -123,7 +125,7 @@ export function formatLevel(data) {
   const inline = (key, items) => ` "${key}": [${items.map((item) => JSON.stringify(item).replaceAll(",", ", ")).join(", ")}]`;
   return (
     `{\n${data.version ? ` "version": ${data.version},\n` : ""} "budget": ${data.budget},\n` +
-    [block("tiles", data.tiles), block("substrates", data.substrates), block("links", data.links), inline("flipped", data.flipped), inline("counters", data.counters), block("cards", data.cards)].join(",\n") +
+    [block("tiles", data.tiles), block("substrates", data.substrates), block("links", data.links), inline("flipped", data.flipped), ...(data.half?.length ? [inline("half", data.half)] : []), inline("counters", data.counters), block("cards", data.cards)].join(",\n") +
     "\n}\n"
   );
 }
@@ -149,6 +151,7 @@ export function normalizeLevel(raw) {
     substrates: raw.substrates,
     links: Array.isArray(raw.links) ? raw.links : [],
     flipped: Array.isArray(raw.flipped) ? raw.flipped : [],
+    half: Array.isArray(raw.half) ? raw.half : [],
     counters: Array.isArray(raw.counters) ? raw.counters : [],
     cards: Array.isArray(raw.cards) ? raw.cards : [],
   };

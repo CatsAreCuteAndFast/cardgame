@@ -2,7 +2,7 @@
 
 import * as bridge from "./bridge.js";
 
-export const SUBSTRATE_COLORS = { 1: "#466e50", 2: "#786432", 3: "#5a4a7a", 4: "#7a4a5a" };
+export const SUBSTRATE_COLORS = { oneturn: "#466e50", twoturn: "#786432", oneneighbour: "#3d6b80", twoneighbour: "#5a4a7a" };
 export const LINK_COLORS = ["#c0392b", "#2e86c1", "#8e44ad", "#d68910", "#16a085", "#7f8c8d"];
 
 // tile, substrate and effect ids and the target kinds each effect takes, from the rules
@@ -58,18 +58,26 @@ function grainSpot(n) {
   return `--gx:${hash % 100}%;--gy:${(hash >>> 8) % 100}%;`;
 }
 
-// anim: { on, elapsed, total } plays the press-and-light (or reverse) animation, already elapsed ms in (negative waits).
+// anim: { on, elapsed, total, from?, to? } plays the press-and-light (or reverse) animation, already elapsed ms in (negative waits);
+// from/to are how lit the tile is before and after (0, .5 for half or 1), and a step to or from half without lit only grows or shrinks the light.
 // the animation classes come off when it ends, so the browser drops the layers it made for it.
 // tile: { classes, style, tick } go on the .tile itself, for the one-shot step animations (swap, dud, win, intro) and the timer's tick
 export function renderCell(cell, { classes = [], order = null, onclick, anim = null, grain = 0, tile: extra = {} }) {
   const tileType = catalog.tiles.find((tile) => tile.id === cell.type);
   const tileClasses = ["tile", ...(extra.classes ?? [])];
   if (cell.flipped) tileClasses.push("flipped");
+  if (cell.half) tileClasses.push("half");
   if (tileType && !tileType.can_flip) tileClasses.push("nf");
   if (tileType && !tileType.can_swap) tileClasses.push("ns");
-  if (anim) tileClasses.push(anim.on ? "anim-on" : "anim-off");
+  if (tileType?.states === 3) tileClasses.push("three");
+  const from = anim?.from ?? (anim?.on ? 0 : 1);
+  const to = anim?.to ?? (anim?.on ? 1 : 0);
+  if (anim) tileClasses.push(Math.max(from, to) < 1 ? "anim-half" : anim.on ? "anim-on" : "anim-off");
   const linkIndex = typeof cell.link === "string" ? Number(cell.link) : cell.link;
-  const style = grainSpot(grain) + (anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms;` : "") + (extra.style ?? "");
+  const style =
+    grainSpot(grain) + (anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms;--l-from:${from};--l-to:${to};` : "") + (extra.style ?? "");
+  const substrate = catalog.substrates.find((entry) => entry.id === cell.substrate);
+  const counterClass = "counter" + (substrate?.ticks === "neighbour" ? " near" : "") + (extra.tick ? (cell.counter === 0 ? " tick ready" : " tick") : "");
   const tile = el("div", { class: tileClasses.join(" "), title: cell.type, style }, [
     el("div", { class: "base" }),
     el("div", { class: "face" }, [
@@ -78,7 +86,8 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
       el("div", { class: "shade" }),
       el("div", { class: "glow" }),
       el("div", { class: "flash" }),
-      cell.period > 0 ? el("span", { class: "counter" + (extra.tick ? (cell.counter === 0 ? " tick ready" : " tick") : ""), textContent: cell.counter }) : null,
+      tileType?.states === 3 ? el("span", { class: "pips" }, [el("i"), el("i")]) : null,
+      cell.period > 0 ? el("span", { class: counterClass, textContent: cell.counter }) : null,
       linkIndex !== null && linkIndex !== -1
         ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
         : null,
@@ -87,12 +96,12 @@ export function renderCell(cell, { classes = [], order = null, onclick, anim = n
     ring("valid"),
     ring("lock"),
   ]);
-  if (anim) setTimeout(() => tile.classList.remove("anim-on", "anim-off"), anim.total - anim.elapsed);
+  if (anim) setTimeout(() => tile.classList.remove("anim-on", "anim-off", "anim-half"), anim.total - anim.elapsed);
   return el(
     "div",
     {
       class: ["cell", ...classes].join(" "),
-      style: cell.period > 0 ? `background:${SUBSTRATE_COLORS[cell.period] ?? "#555"}` : "",
+      style: cell.period > 0 ? `background:${SUBSTRATE_COLORS[cell.substrate] ?? "#555"}` : "",
       onclick,
     },
     tile,
@@ -138,11 +147,13 @@ function trackBoard(board, snap) {
   const listed = (list, index) => list.some(([row, col]) => row * snap.width + col === index);
   const swapped = step?.effect === "swap" ? step.cells : [];
   const linkDelay = cssMs("--link-delay");
+  const changed = snap.cells.map((cell, index) => stepped && lit(cell) !== lit(prev.snap.cells[index]) && !listed(swapped, index));
   const changedAt = snap.cells.map((cell, index) => {
     if (!sameGame) return -Infinity;
-    if (!stepped || cell.flipped === prev.snap.cells[index].flipped || listed(swapped, index)) return prev.changedAt[index];
+    if (!changed[index]) return prev.changedAt[index];
     return now + (listed(step.cells, index) ? 0 : linkDelay);
   });
+  const changedFrom = snap.cells.map((cell, index) => (!sameGame ? 0 : changed[index] ? lit(prev.snap.cells[index]) : prev.changedFrom[index]));
   const entry = {
     game: snap.game_id,
     plays: snap.plays,
@@ -150,6 +161,7 @@ function trackBoard(board, snap) {
     sameGame,
     stepped,
     changedAt,
+    changedFrom,
     stepAt: stepped ? now : sameGame ? prev.stepAt : -Infinity,
     step: stepped ? step : sameGame ? prev.step : null,
     before: stepped ? prev.snap : sameGame ? prev.before : null,
@@ -158,12 +170,17 @@ function trackBoard(board, snap) {
   return entry;
 }
 
+// how lit a tile is: 0 off, .5 half (three-state tiles), 1 lit
+const lit = (cell) => (cell.flipped ? 1 : cell.half ? 0.5 : 0);
+
 function flipAnimations(track) {
   const now = performance.now();
   const total = flipDuration();
   return track.snap.cells.map((cell, index) => {
     const elapsed = now - track.changedAt[index];
-    return elapsed < total ? { on: cell.flipped, elapsed, total } : null;
+    const to = lit(cell);
+    const from = track.changedFrom[index];
+    return elapsed < total ? { on: to > from, from, to, elapsed, total } : null;
   });
 }
 
@@ -190,7 +207,7 @@ function stepExtras(track, index, centreRow, centreCol) {
     classes.push("swap", picked === 1 ? "over" : "under");
     cellClasses.push(picked === 1 ? "swap-over" : "swap-under");
     style += `--dx:${other[1] - col};--dy:${other[0] - row};`;
-  } else if (step.effect === "flip" && picked !== -1 && cell.flipped === old.flipped && elapsed < cssMs("--tap-ms")) {
+  } else if (step.effect === "flip" && picked !== -1 && lit(cell) === lit(old) && elapsed < cssMs("--tap-ms")) {
     classes.push("dud");
   }
   if (old.counter !== cell.counter && elapsed < cssMs("--tick-start") + cssMs("--tick-ms")) tick = true;
@@ -456,6 +473,11 @@ function animateHand(hand, track, map, oldNodes, oldRects) {
 }
 
 const STEP_CLASSES = new Set(["swap-over", "swap-under", "locked", "lock-in"]);
+
+// takes a cell's press off once it has played, so it can't replay
+function unpress(cell) {
+  if (cell.classList.contains("press")) setTimeout(() => cell.classList.remove("press"), cssMs("--tap-ms"));
+}
 const STEP_KEEP_MS = 1200;
 
 // the win's wash: a soft ring that grows out from the board's middle, timed to reach the farthest tile as its sheen starts
@@ -482,10 +504,11 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   board.classList.toggle("won", snap.won);
   board.classList.toggle("over", snap.game_over);
   const wasPicked = lastPicked(board, snap);
-  const cellClasses = (row, col) => {
+  // flipping: whether the tile is mid-flip, so a fresh pick's press (which would otherwise start when the flip's classes come off) is skipped
+  const cellClasses = (row, col, flipping) => {
     const classes = [];
     const candidate = has(snap.candidate_tiles, row, col);
-    if (has(snap.picked, row, col)) classes.push("picked", ...(wasPicked.includes(`${row},${col}`) ? [] : ["lock-in"]));
+    if (has(snap.picked, row, col)) classes.push("picked", ...(wasPicked.includes(`${row},${col}`) ? [] : ["lock-in", ...(flipping ? [] : ["press"])]));
     else if (candidate) classes.push(snap.targeting ? "targeting" : "candidate");
     return classes;
   };
@@ -505,10 +528,12 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
       if (!track.sameGame) extra.style += `--d:${Math.hypot(row - centreRow, col - centreCol).toFixed(2)};`;
       // a tile a play used shows the lock ring for a moment; it pops in unless it was already locked
       if (extra.cellClasses.includes("locked") && !wasPicked.includes(`${row},${col}`)) extra.cellClasses.push("lock-in");
-      const node = renderCell(cell, { classes: [...cellClasses(row, col), ...extra.cellClasses], grain: index, anim: anims[index], tile: extra });
+      if (anims[index]) extra.classes = extra.classes.filter((name) => name !== "dud");
+      const node = renderCell(cell, { classes: [...cellClasses(row, col, Boolean(anims[index])), ...extra.cellClasses], grain: index, anim: anims[index], tile: extra });
       node.dataset.row = row;
       node.dataset.col = col;
       board.append(node);
+      unpress(node);
     });
     if (track.stepped && snap.won && track.before && !track.before.won) board.append(wash(snap, centreRow, centreCol));
   } else {
@@ -516,7 +541,9 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     const running = performance.now() - track.stepAt < STEP_KEEP_MS;
     cells.forEach((node, index) => {
       const kept = running ? [...node.classList].filter((name) => STEP_CLASSES.has(name)) : [];
-      node.className = ["cell", ...cellClasses(Math.floor(index / snap.width), index % snap.width), ...kept].join(" ");
+      const flipping = /\banim-(on|off)\b/.test(node.firstElementChild?.className ?? "");
+      node.className = ["cell", ...cellClasses(Math.floor(index / snap.width), index % snap.width, flipping), ...kept].join(" ");
+      unpress(node);
     });
   }
   showPreview(board, snap.preview, snap.blocked, card);
@@ -703,9 +730,10 @@ export function attachPlayInput(board, hand, api) {
   function moveSwipe(e) {
     const cell = under(e, ".cell.targeting[data-row]");
     if (cell === press.hover) return;
-    press.hover?.classList.remove("picked", "lock-in");
+    press.hover?.classList.remove("picked", "lock-in", "press");
     press.hover = cell;
-    cell?.classList.add("picked", "lock-in");
+    cell?.classList.add("picked", "lock-in", "press");
+    if (cell) unpress(cell);
   }
 
   function endSwipe(e) {

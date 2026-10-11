@@ -49,10 +49,11 @@ function card(data, index, width, height) {
   return { effect: data.effect, target, single_use: Boolean(data.single_use), copy: false };
 }
 
-export const LEVEL_VERSION = 1;
+export const LEVEL_VERSION = 2;
 
-// MIGRATIONS[n] turns a version n level into a version n + 1 level
-const MIGRATIONS = {};
+// MIGRATIONS[n] turns a version n level into a version n + 1 level.
+// 2 added double tiles, neighbour timers and "half"; version 1 levels mean the same
+const MIGRATIONS = { 1: (level) => level };
 
 // levels saved before versions existed have no version and are version 1
 export function upgradeLevel(data) {
@@ -94,6 +95,14 @@ export function parseLevel(raw) {
   if (new Set(flipped).size !== flipped.length) throw new Error("a tile is listed as flipped more than once");
   if (flipped.length === width * height) throw new Error("every tile starts flipped, so the level is already solved");
 
+  const half = list(data.half ?? [], "half").map((entry) => coord(entry, width, height, "half-lit tile"));
+  if (new Set(half).size !== half.length) throw new Error("a tile is listed as half-lit more than once");
+  for (const cell of half) {
+    const where = fmt([Math.floor(cell / width), cell % width]);
+    if (TILE_TYPES[tiles[cell]].states !== 3) throw new Error(`${where} starts half-lit but its tile has no half state`);
+    if (flipped.includes(cell)) throw new Error(`${where} is listed as both flipped and half-lit`);
+  }
+
   const counters = substrates.map((id) => SUBSTRATE_TYPES[id].period);
   const seen = new Set();
   for (const entry of list(data.counters ?? [], "counters")) {
@@ -107,5 +116,5 @@ export function parseLevel(raw) {
     counters[cell] = entry[2];
   }
 
-  return { width, height, budget: data.budget, tiles, substrates, links, flipped, counters, cards };
+  return { width, height, budget: data.budget, tiles, substrates, links, flipped, half, counters, cards };
 }

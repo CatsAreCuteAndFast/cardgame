@@ -2,14 +2,14 @@
 // A move is {card, cells} for a tile card (cells are the picks) or {card, target} for a card
 // that changes another card.
 
-import { SUBSTRATE_TYPES, toCell, toCoord } from "./types.js";
+import { SUBSTRATE_TYPES, toCell, toCoord, isAdjacent } from "./types.js";
 import { TARGETS, isCandidate } from "./targets.js";
 import { EFFECTS, canModify } from "./effects.js";
 
 export function newState(level) {
   return {
     level,
-    tiles: level.tiles.map((type, cell) => ({ type, flipped: level.flipped.includes(cell), link: level.links[cell] })),
+    tiles: level.tiles.map((type, cell) => ({ type, flipped: level.flipped.includes(cell), half: level.half.includes(cell), link: level.links[cell] })),
     counters: level.counters,
     hand: level.cards,
     plays: level.budget,
@@ -19,11 +19,15 @@ export function newState(level) {
 export const isWon = (state) => state.tiles.every((tile) => tile.flipped);
 export const canPlay = (state) => state.plays > 0;
 
-// timed substrates count down and restart at their period after reaching 0
-function tick(level, counters) {
+// play timers count down every play and restart at their period after reaching 0.
+// neighbour timers count down once per orthogonal neighbour in flips, stay at 0, and restart at their period when their own tile flips
+function tick(level, counters, flips) {
   return counters.map((counter, cell) => {
-    const period = SUBSTRATE_TYPES[level.substrates[cell]].period;
-    return period === 0 ? counter : counter === 0 ? period : counter - 1;
+    const { period, ticks } = SUBSTRATE_TYPES[level.substrates[cell]];
+    if (period === 0) return counter;
+    if (ticks === "play") return counter === 0 ? period : counter - 1;
+    if (flips.includes(cell)) return period;
+    return Math.max(0, counter - flips.filter((other) => isAdjacent(level.width, cell, other)).length);
   });
 }
 
@@ -37,13 +41,16 @@ export function applyMove(state, move) {
   const card = state.hand[move.card];
   const effect = EFFECTS[card.effect];
   let { tiles, hand } = state;
+  let flips = [];
   if (effect.onTiles) {
-    tiles = effect.apply(state, TARGETS[card.target.kind].resolve(card.target, move.cells, state.level.width));
+    const cells = TARGETS[card.target.kind].resolve(card.target, move.cells, state.level.width);
+    flips = effect.plan(state, cells).flips;
+    tiles = effect.apply(state, cells);
   } else {
     hand = [...hand, effect.apply(hand[move.target])];
   }
   if (card.single_use) hand = hand.filter((_, index) => index !== move.card);
-  return { ...state, tiles, hand, counters: tick(state.level, state.counters), plays: state.plays - 1 };
+  return { ...state, tiles, hand, counters: tick(state.level, state.counters, flips), plays: state.plays - 1 };
 }
 
 // every distinct move; picks that act the same (same set of tiles) are listed once.
@@ -133,7 +140,7 @@ export function playMoves(level, moves) {
 
 // identifies a position for searching (the plays left are not part of it)
 export function stateKey(state) {
-  const tiles = state.tiles.map((tile) => `${tile.type}${tile.flipped ? "+" : "-"}${tile.link ?? ""}`).join(" ");
+  const tiles = state.tiles.map((tile) => `${tile.type}${tile.flipped ? "+" : tile.half ? "~" : "-"}${tile.link ?? ""}`).join(" ");
   const hand = state.hand.map((card) => JSON.stringify([card.effect, card.target, card.single_use])).join(" ");
   return `${tiles}|${state.counters.join("")}|${hand}`;
 }

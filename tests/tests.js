@@ -172,4 +172,45 @@ async function testBridgeUndo() {
   assert(bridge.checkSolution(retarget, [{ card: 1, target: "0" }, { card: 2, tiles: [[0, 0]] }]).error.includes("card index"), "a target must be a number");
 }
 
-export const TESTS = { testLevels, testPack, testMovesMatchPreview, testCardPlay, testBridgeUndo };
+// double tiles step off -> half -> lit -> off; neighbour timers count orthogonal flips, stay ready, and reset when their tile flips
+async function testDoubleAndNeighbour() {
+  const flipAll = (coords) => ({ effect: "flip", target: { kind: "fixed", coords } });
+  const double = parseLevel({ budget: 5, tiles: [["double"]], substrates: [["plain"]], cards: [flipAll([[0, 0]])] });
+  let state = newState(double);
+  const steps = [];
+  for (let i = 0; i < 3; i++) {
+    state = applyMove(state, { card: 0, cells: [0] });
+    steps.push([state.tiles[0].half, state.tiles[0].flipped, isWon(state)]);
+  }
+  assert(same(steps, [[true, false, false], [false, true, true], [false, false, false]]), "a double tile goes off, half, lit, off");
+  const halfStart = { budget: 1, tiles: [["double", "basic"]], substrates: [["plain", "plain"]], half: [[0, 0]], cards: [flipAll([[0, 0], [0, 1]])] };
+  assert(isWon(applyMove(newState(parseLevel(halfStart)), { card: 0, cells: [0] })), "a half-lit start needs one more flip");
+  rejects({ ...halfStart, half: [[0, 1]] }, "only three-state tiles can start half-lit");
+  rejects({ ...halfStart, flipped: [[0, 0]] }, "a tile can't start both flipped and half-lit");
+
+  const row = parseLevel({
+    budget: 9,
+    tiles: [["basic", "basic", "basic"], ["basic", "basic", "basic"]],
+    substrates: [["plain", "twoneighbour", "plain"], ["plain", "plain", "plain"]],
+    cards: [flipAll([[0, 0]]), flipAll([[0, 2]]), flipAll([[0, 1]]), flipAll([[1, 0]]), { effect: "swap", target: { kind: "adjacent", count: 2 } }],
+  });
+  state = newState(row);
+  const counter = () => state.counters[1];
+  const play = (move) => (state = applyMove(state, move));
+  assert(counter() === 2, "a neighbour timer starts at its period");
+  play({ card: 3, cells: [3] });
+  assert(counter() === 2, "a diagonal flip doesn't count");
+  play({ card: 4, cells: [0, 3] });
+  assert(counter() === 2, "a swap doesn't count");
+  play({ card: 2, cells: [1] });
+  assert(!state.tiles[1].flipped && counter() === 2, "a neighbour timer blocks its tile until ready");
+  play({ card: 0, cells: [0] });
+  play({ card: 0, cells: [0] });
+  assert(counter() === 0, "each neighbour flip, on or off, counts once");
+  play({ card: 1, cells: [2] });
+  assert(counter() === 0, "a ready neighbour timer stays at 0");
+  play({ card: 2, cells: [1] });
+  assert(state.tiles[1].flipped && counter() === 2, "flipping its tile resets a neighbour timer");
+}
+
+export const TESTS = { testLevels, testPack, testMovesMatchPreview, testCardPlay, testBridgeUndo, testDoubleAndNeighbour };

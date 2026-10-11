@@ -24,8 +24,8 @@ let lastStep = null;
 export function catalog() {
   return {
     level_version: LEVEL_VERSION,
-    tiles: Object.entries(TILE_TYPES).map(([id, type]) => ({ id, can_flip: type.canFlip, can_swap: type.canSwap })),
-    substrates: Object.entries(SUBSTRATE_TYPES).map(([id, type]) => ({ id, period: type.period })),
+    tiles: Object.entries(TILE_TYPES).map(([id, type]) => ({ id, can_flip: type.canFlip, can_swap: type.canSwap, states: type.states })),
+    substrates: Object.entries(SUBSTRATE_TYPES).map(([id, type]) => ({ id, period: type.period, ticks: type.ticks })),
     effects: Object.entries(EFFECTS).map(([id, effect]) => ({ id, kinds: Object.keys(TARGETS).filter((kind) => effect.accepts(SAMPLE_TARGETS[kind])) })),
   };
 }
@@ -152,6 +152,7 @@ export function snapshot() {
     cells: state.tiles.map((tile, cell) => ({
       type: tile.type,
       flipped: tile.flipped,
+      half: tile.half,
       link: tile.link,
       substrate: level.substrates[cell],
       period: SUBSTRATE_TYPES[level.substrates[cell]].period,

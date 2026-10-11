@@ -19,6 +19,7 @@ function resize(data, width, height) {
   const inside = ([r, c]) => r < height && c < width;
   data.links = data.links.map((group) => group.filter(inside)).filter((group) => group.length > 0);
   data.flipped = data.flipped.filter(inside);
+  data.half = data.half.filter(inside);
   data.counters = data.counters.filter(inside);
   for (const card of data.cards) {
     if (card.target.coords) card.target.coords = card.target.coords.filter(inside);
@@ -51,6 +52,10 @@ function periodAt(data, row, col) {
   return catalog.substrates.find((s) => s.id === data.substrates[row][col])?.period ?? 0;
 }
 
+function statesAt(data, row, col) {
+  return catalog.tiles.find((tile) => tile.id === data.tiles[row][col])?.states ?? 2;
+}
+
 function counterAt(data, row, col) {
   return data.counters.find(([r, c]) => r === row && c === col)?.[2] ?? periodAt(data, row, col);
 }
@@ -74,6 +79,7 @@ function editTap(row, col) {
     toggleCoord(data.cards[ui.pickCard], row, col);
   } else if (mode === "tiles") {
     data.tiles[row][col] = brush.tiles;
+    if (statesAt(data, row, col) !== 3) data.half = data.half.filter((coord) => !sameCoord(coord, [row, col]));
   } else if (mode === "substrates") {
     data.substrates[row][col] = brush.substrates;
     setCounter(data, row, col, periodAt(data, row, col));
@@ -85,9 +91,14 @@ function editTap(row, col) {
   } else if (mode === "links") {
     toggleLink(data, row, col, brush.links);
   } else if (mode === "flipped") {
-    const index = data.flipped.findIndex((coord) => sameCoord(coord, [row, col]));
-    if (index === -1) data.flipped.push([row, col]);
-    else data.flipped.splice(index, 1);
+    // off -> lit -> off, or off -> half -> lit -> off for a three-state tile
+    const here = (coord) => sameCoord(coord, [row, col]);
+    const lit = data.flipped.some(here);
+    const half = data.half.some(here);
+    data.flipped = data.flipped.filter((coord) => !here(coord));
+    data.half = data.half.filter((coord) => !here(coord));
+    if (!lit && !half && statesAt(data, row, col) === 3) data.half.push([row, col]);
+    else if (!lit) data.flipped.push([row, col]);
   }
   changed();
 }
@@ -170,7 +181,9 @@ export function renderEdit() {
           {
             type: data.tiles[row][col],
             flipped: data.flipped.some((coord) => sameCoord(coord, [row, col])),
+            half: data.half.some((coord) => sameCoord(coord, [row, col])),
             link: linkOf(data, row, col),
+            substrate: data.substrates[row][col],
             period: periodAt(data, row, col),
             counter: counterAt(data, row, col),
           },
@@ -217,7 +230,7 @@ function renderPalette(data) {
     for (const tile of catalog.tiles) {
       palette.append(
         el("button", { class: "chip" + (brush.tiles === tile.id ? " active" : ""), onclick: () => ((brush.tiles = tile.id), render()) }, [
-          el("span", { class: "swatch", style: `background:${tile.can_flip ? "var(--tile)" : "#3b3447"}${tile.can_swap ? "" : ";background-image:repeating-linear-gradient(45deg,#fff3 0 3px,#0000 3px 6px)"}` }),
+          el("span", { class: "swatch", style: `background:${tile.can_flip ? "var(--tile)" : "#3b3447"}${tile.can_swap ? "" : ";background-image:repeating-linear-gradient(45deg,#fff3 0 3px,#0000 3px 6px)"}${tile.states === 3 ? ";background-image:radial-gradient(circle,var(--flipped) 30%,#0000 32%)" : ""}` }),
           tile.id,
         ]),
       );
@@ -228,14 +241,14 @@ function renderPalette(data) {
         el(
           "button",
           { class: "chip" + (brush.substrates === substrate.id ? " active" : ""), onclick: () => ((brush.substrates = substrate.id), render()) },
-          [el("span", { class: "swatch", style: `background:${SUBSTRATE_COLORS[substrate.period] ?? "var(--panel)"}` }), `${substrate.id} (${substrate.period})`],
+          [el("span", { class: "swatch", style: `background:${SUBSTRATE_COLORS[substrate.id] ?? "var(--panel)"}` }), `${substrate.id} (${substrate.period})`],
         ),
       );
     }
   } else if (ui.mode === "counters") {
-    palette.append(el("span", { class: "hint", textContent: "Tap a timed substrate to change how many turns it starts with (0 = ready)" }));
+    palette.append(el("span", { class: "hint", textContent: "Tap a timed substrate to change its starting count (turns, or neighbour flips; 0 = ready)" }));
   } else if (ui.mode === "flipped") {
-    palette.append(el("span", { class: "hint", textContent: `Tap tiles to set which start flipped (${data.flipped.length} flipped)` }));
+    palette.append(el("span", { class: "hint", textContent: `Tap tiles to set which start flipped (${data.flipped.length} flipped${data.half.length ? `, ${data.half.length} half` : ""}); double tiles go off, half, lit` }));
   } else if (ui.mode === "links") {
     data.links.forEach((group, index) => {
       palette.append(
