@@ -13,6 +13,7 @@ let packError = null;
 let solved = new Set();
 let tab = "levels";
 let index = null;
+let page = null;
 let snap = null;
 let playError = null;
 
@@ -42,11 +43,16 @@ function callBridge(call) {
 
 // pack names repeat across folders, so progress is keyed by folder and name
 const levelKey = (entry) => (entry.folder ? `${entry.folder}/${entry.name}` : entry.name);
-const levelTitle = (entry) => (entry.folder ? `${entry.folder} · ${entry.name}` : entry.name);
+// levels are shown by their place on their page, not their editor name
+function levelTitle(entry) {
+  const number = pack.filter((other) => (other.folder ?? "") === (entry.folder ?? "")).indexOf(entry) + 1;
+  return entry.folder ? `${entry.folder} · ${number}` : String(number);
+}
 
 function startLevel(next) {
   index = next;
   playError = null;
+  page = pack[index].folder ?? "";
   writeStorage(LAST_KEY, levelKey(pack[index]));
   snap = callBridge(() => bridge.start(pack[index].level));
 }
@@ -78,6 +84,7 @@ function render() {
   else renderPlay();
 }
 
+// each folder in the pack is a page of levels, shown as a 3-wide grid numbered in pack order
 function renderLevels() {
   $("pack-error").hidden = !packError;
   $("pack-error").textContent = packError ?? "";
@@ -85,15 +92,33 @@ function renderLevels() {
   container.replaceChildren();
   if (!packError && pack.length === 0) container.append(el("p", { class: "empty", textContent: "No levels to test yet." }));
   const folders = [...new Set(pack.map((entry) => entry.folder ?? ""))];
-  for (const folder of folders) {
-    const list = el("ol", { class: "level-list" });
-    pack.forEach((entry, i) => {
-      if ((entry.folder ?? "") !== folder) return;
-      list.append(
+  if (folders.length === 0) return;
+  if (!folders.includes(page)) page = folders[0];
+  const levels = pack.map((entry, i) => ({ entry, i })).filter(({ entry }) => (entry.folder ?? "") === page);
+  const done = levels.filter(({ entry }) => solved.has(levelKey(entry))).length;
+  container.append(
+    el(
+      "nav",
+      { class: "segmented pages" },
+      folders.map((folder, n) =>
+        el("button", {
+          class: folder === page ? "active" : "",
+          textContent: String(n + 1),
+          title: folder,
+          onclick: () => ((page = folder), render()),
+        }),
+      ),
+    ),
+    el("h2", { class: "page-title" }, [page || "Levels", el("span", { class: "page-count", textContent: `${done}/${levels.length}` })]),
+    el(
+      "div",
+      { class: "level-grid" },
+      levels.map(({ entry, i }, n) =>
         el(
-          "li",
+          "button",
           {
-            class: "level-item pack-item" + (i === index ? " is-current" : ""),
+            class: "level-square" + (i === index ? " is-current" : "") + (solved.has(levelKey(entry)) ? " solved" : ""),
+            title: entry.name,
             onclick: () => {
               startLevel(i);
               tab = "play";
@@ -101,15 +126,11 @@ function renderLevels() {
               window.scrollTo(0, 0);
             },
           },
-          [
-            el("span", { class: "info" }, el("div", { class: "name", textContent: entry.name })),
-            solved.has(levelKey(entry)) ? el("span", { class: "done", textContent: "✓ solved" }) : null,
-          ],
+          [el("span", { class: "number", textContent: String(n + 1) }), solved.has(levelKey(entry)) ? el("span", { class: "done", textContent: "✓" }) : null],
         ),
-      );
-    });
-    container.append(el("section", { class: "folder" }, [folder ? el("h2", { textContent: folder }) : null, list]));
-  }
+      ),
+    ),
+  );
 }
 
 function renderPlay() {
@@ -152,7 +173,10 @@ async function loadPack() {
   }
   const last = readStorage(LAST_KEY, null);
   const found = pack.findIndex((entry) => levelKey(entry) === last);
-  if (found !== -1) index = found;
+  if (found !== -1) {
+    index = found;
+    page = pack[found].folder ?? "";
+  }
   render();
 }
 
