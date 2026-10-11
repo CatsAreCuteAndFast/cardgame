@@ -41,10 +41,47 @@ const GROUPS = [
     { name: "--recoil-back", label: "Spring back ×", unit: "", min: 0, max: 1, step: 0.05 },
   ]],
   ["Tile outline", [
+    ms("--ring-ms", "Outline fades in for", 1000), ease("--ring-ease", "Fade-in easing"),
+    { name: "--ring-scale", label: "Fade-in starts at ×", unit: "", min: 0.8, max: 1.3, step: 0.01 },
     ms("--ants-ms", "Dashes loop every", 8000),
     ms("--lock-ms", "Dashes fade for", 1000), ease("--lock-ease", "Dash fade easing"),
     ms("--pop-ms", "Pick pops for", 1000), ease("--pop-ease", "Pop easing"),
     { name: "--pop-scale", label: "Pop starts at ×", unit: "", min: 1, max: 1.6, step: 0.01 },
+  ]],
+  ["Tile tap", [
+    ms("--tap-ms", "Press lasts", 1000),
+    { name: "--tap-depth", label: "Press depth", unit: "%", min: 0, max: 10, step: 0.1 },
+    ms("--link-delay", "Linked tiles follow after", 600),
+    ms("--shake-ms", "Shake lasts", 1000),
+  ]],
+  ["Tile swap", [
+    ms("--swap-ms", "Slide lasts"), ease("--swap-ease", "Slide easing"),
+    { name: "--swap-lift", label: "Top tile lifts to ×", unit: "", min: 1, max: 1.3, step: 0.01 },
+    { name: "--swap-sink", label: "Bottom tile sinks to ×", unit: "", min: 0.7, max: 1, step: 0.01 },
+  ]],
+  ["Timers", [
+    ms("--tick-start", "Tick starts", 1000), ms("--tick-ms", "Tick lasts", 1000), ease("--tick-ease", "Tick easing"),
+  ]],
+  ["Level won", [
+    ms("--win-start", "Wave starts"), ms("--win-stagger", "Per tile of distance", 300), ms("--win-ms", "Each hop lasts"),
+    { name: "--win-hop", label: "Hop height (− is up)", unit: "%", min: -20, max: 0, step: 0.5 },
+    { name: "--win-flash", label: "Sheen strength", unit: "", min: 0, max: 1, step: 0.05 },
+    ms("--settle-start", "Hand settles after"), ms("--settle-ms", "Hand settles for"),
+  ]],
+  ["Cards", [
+    ms("--card-ms", "Lift lasts", 1000), ease("--card-ease", "Lift easing"),
+    { name: "--card-lift", label: "Lift height (− is up)", unit: "px", min: -20, max: 0, step: 1 },
+    ms("--played-ms", "Stamp lasts", 1000),
+    ms("--deal-ms", "Deal lasts", 1000), ease("--deal-ease", "Deal easing"),
+    ms("--fly-ms", "Fly into board lasts", 1000), ease("--fly-ease", "Fly easing"),
+    ms("--return-ms", "Ghost returns for", 1000),
+  ]],
+  ["New game", [
+    ms("--intro-ms", "Tiles settle for", 1000), ease("--intro-ease", "Settle easing"),
+    { name: "--intro-scale", label: "Tiles start at ×", unit: "", min: 0.5, max: 1, step: 0.01 },
+    ms("--intro-stagger", "Per tile of distance", 300),
+    ms("--deal-stagger", "Per card", 300),
+    ms("--text-ms", "Text slides in for", 1000),
   ]],
 ];
 const SETTINGS = GROUPS.flatMap(([, settings]) => settings);

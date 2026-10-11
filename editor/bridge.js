@@ -18,6 +18,8 @@ let redoStack = [];
 let game = null;
 // counts start() calls, so the page can tell a new game from a step in the same one
 let gameId = 0;
+// the one-play step that led to the current position (a play, undo or redo), for the board's animations
+let lastStep = null;
 
 export function catalog() {
   return {
@@ -42,6 +44,7 @@ export function start(level) {
   gameId++;
   history = [game];
   redoStack = [];
+  lastStep = null;
   return snapshot();
 }
 
@@ -55,6 +58,7 @@ function tap(intent) {
   if (next.state.plays !== game.state.plays) {
     history.push(next);
     redoStack = [];
+    lastStep = describeStep(game.state, next.move, false);
   }
   game = next;
   return snapshot();
@@ -67,16 +71,41 @@ export const tapNothing = () => tap({ tap: "nothing" });
 // both drop a half-made selection
 export function undo() {
   requireGame();
-  if (history.length > 1) redoStack.push(history.pop());
+  if (history.length > 1) {
+    const undone = history.pop();
+    redoStack.push(undone);
+    lastStep = describeStep(history.at(-1).state, undone.move, true);
+  }
   game = history.at(-1);
   return snapshot();
 }
 
 export function redo() {
   requireGame();
-  if (redoStack.length) history.push(redoStack.pop());
+  if (redoStack.length) {
+    const redone = redoStack.pop();
+    lastStep = describeStep(history.at(-1).state, redone.move, false);
+    history.push(redone);
+  }
   game = history.at(-1);
   return snapshot();
+}
+
+// the move as the board animates it: which card (index in the hand before the move) did what to which tiles,
+// whether the card left the hand (used_up) or a card was added (retarget), and whether it is being undone (reverse)
+function describeStep(before, move, reverse) {
+  const card = before.hand[move.card];
+  const effect = EFFECTS[card.effect];
+  const cells = effect.onTiles ? TARGETS[card.target.kind].resolve(card.target, move.cells, before.level.width) : [];
+  return {
+    effect: card.effect,
+    card: move.card,
+    target: move.target ?? null,
+    cells: cells.map((cell) => toCoord(before.level.width, cell)),
+    used_up: Boolean(card.single_use),
+    added: !effect.onTiles,
+    reverse,
+  };
 }
 
 // the moves played so far, in the form levels store as their solution
@@ -117,6 +146,7 @@ export function snapshot() {
   const sel = targetingCard ? selection(state, phase.index, phase.picks) : null;
   return {
     game_id: gameId,
+    step: lastStep,
     width: level.width,
     height: level.height,
     cells: state.tiles.map((tile, cell) => ({

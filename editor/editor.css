@@ -41,7 +41,9 @@ button, select {
   touch-action: manipulation;
 }
 
-button:active { filter: brightness(1.25); }
+/* buttons press like the tiles: a quick dip while held */
+button:not(.card) { transition: transform var(--btn-ms) ease-out, filter var(--btn-ms) ease-out; }
+button:not(.card):active { filter: brightness(1.25); transform: scale(.96); }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.danger { color: var(--bad); }
 button.small { min-height: 36px; min-width: 36px; padding: 0 8px; }
@@ -115,16 +117,20 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 }
 
 .board {
+  --gap: 4px;
   display: grid;
-  gap: 4px;
+  gap: var(--gap);
   margin: 12px auto;
   width: 100%;
   max-width: min(100%, 520px);
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  transition: opacity .5s ease-out;
 }
+.board.over { opacity: .8; }
 
+/* the padding is 7% of the cell's width on every side, so the tile is .86 of the cell (the swap slide relies on that) */
 .cell {
   position: relative;
   aspect-ratio: 1;
@@ -134,6 +140,8 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   container-type: inline-size;
   cursor: pointer;
 }
+.cell.swap-over { z-index: 2; }
+.cell.swap-under { z-index: 1; }
 
 /* a tile is a key: the face sits on a base and is pushed in (by 12/160 of the tile) and lit when flipped.
    only transform and opacity animate, so phones can run the flip on the GPU */
@@ -173,7 +181,9 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   background: var(--flipped);
   transform: scale(0);
 }
-.grain, .shade, .glow { position: absolute; inset: 0; }
+.grain, .shade, .glow, .flash { position: absolute; inset: 0; }
+/* a white sheen over the face, shown only by the win wave */
+.flash { background: #fff; opacity: 0; }
 /* the grain is noise drawn at one texture pixel per device pixel (grain.js), shown unscaled and unsmoothed so it stays sharp;
    --gx/--gy (grainSpot) pick a different part of it for each tile */
 .grain {
@@ -282,8 +292,126 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   65% { translate: 0 calc(-1 * var(--r-depth) * var(--recoil-back)); animation-timing-function: ease-in-out; }
   100% { translate: 0 0; }
 }
+
+/* the other board animations. all of them are transforms and opacity on layers that are drawn once (the marching dashes are the one exception),
+   so a 5-8 year old phone runs them; each has its start, length and easing on :root for the Animations panel */
+:root {
+  --link-delay: 70ms;
+  --tap-ms: 260ms;
+  --tap-depth: 4%;
+  --ring-ms: 220ms;
+  --ring-ease: cubic-bezier(.2, .7, .3, 1);
+  --ring-scale: 1.06;
+  --swap-ms: 420ms;
+  --swap-ease: cubic-bezier(.55, 0, .1, 1);
+  --swap-lift: 1.08;
+  --swap-sink: .94;
+  --tick-start: 120ms;
+  --tick-ms: 320ms;
+  --tick-ease: cubic-bezier(.2, 1.2, .4, 1);
+  --win-start: 380ms;
+  --win-stagger: 90ms;
+  --win-ms: 560ms;
+  --win-hop: -7%;
+  --win-flash: .3;
+  --intro-ms: 320ms;
+  --intro-stagger: 40ms;
+  --intro-scale: .9;
+  --intro-ease: cubic-bezier(.2, .9, .3, 1.15);
+  --shake-ms: 360ms;
+  --card-ms: 200ms;
+  --card-ease: cubic-bezier(.3, 1.3, .5, 1);
+  --card-lift: -6px;
+  --deal-ms: 360ms;
+  --deal-ease: cubic-bezier(.2, .9, .3, 1.1);
+  --deal-stagger: 45ms;
+  --fly-ms: 380ms;
+  --fly-ease: cubic-bezier(.5, 0, .85, .45);
+  --return-ms: 260ms;
+  --played-ms: 320ms;
+  --settle-start: 450ms;
+  --settle-ms: 500ms;
+  --text-ms: 220ms;
+  --btn-ms: 120ms;
+}
+/* tapping a tile presses it like a button: a newly picked tile, and a picked tile that a flip left unchanged (dud).
+   not while the tile is flipping, which has its own press */
+.cell.lock-in .tile:not(.anim-on, .anim-off) .face,
+.tile.dud:not(.anim-on, .anim-off) .face {
+  animation: tap-press var(--tap-ms) both;
+  animation-delay: var(--step-delay, 0ms);
+}
+@keyframes tap-press {
+  0% { translate: 0 0; animation-timing-function: cubic-bezier(.2, .6, .4, 1); }
+  40% { translate: 0 var(--tap-depth); animation-timing-function: ease-in-out; }
+  100% { translate: 0 0; }
+}
+/* swapped tiles slide into each other's cell, the first pick lifting over the other, which sinks a little.
+   the slide starts a cell pitch away: the tile's own width is .86 of the cell (see .cell), plus the board's gap */
+.tile.swap {
+  animation: swap-move var(--swap-ms) var(--swap-ease) both, swap-lift var(--swap-ms) ease-in-out both;
+  animation-delay: var(--step-delay, 0ms);
+}
+.tile.swap.over { --swap-scale: var(--swap-lift); }
+.tile.swap.under { --swap-scale: var(--swap-sink); }
+@keyframes swap-move {
+  from { transform: translate(calc(var(--dx) * (100% / .86 + var(--gap))), calc(var(--dy) * (100% / .86 + var(--gap)))); }
+  to { transform: none; }
+}
+@keyframes swap-lift { 50% { scale: var(--swap-scale); } }
+/* a timer that changed pops its number in (bigger when it reaches 0 and the tile is ready) */
+.counter.tick {
+  animation: tick var(--tick-ms) var(--tick-ease) both;
+  animation-delay: calc(var(--step-delay, 0ms) + var(--tick-start));
+}
+.counter.tick.ready { --tick-scale: 1.6; }
+@keyframes tick { from { scale: var(--tick-scale, 1.3); opacity: .3; } }
+/* winning: a wave out from the tiles that flipped last; each tile hops and a white sheen passes over its face */
+.tile.win,
+.tile.win .flash {
+  animation-duration: var(--win-ms);
+  animation-fill-mode: both;
+  animation-delay: calc(var(--step-delay, 0ms) + var(--win-start) + var(--win-d, 0) * var(--win-stagger));
+}
+.tile.win { animation-name: hop; }
+.tile.win .flash { animation-name: flash; }
+@keyframes hop {
+  0% { translate: 0 0; animation-timing-function: cubic-bezier(.2, .7, .3, 1); }
+  40% { translate: 0 var(--win-hop); animation-timing-function: cubic-bezier(.5, 0, .7, .4); }
+  100% { translate: 0 0; }
+}
+@keyframes flash {
+  0% { opacity: 0; }
+  35% { opacity: var(--win-flash); }
+  100% { opacity: 0; }
+}
+/* a new game: the tiles settle in from the middle outwards and the cards are dealt in */
+.board.intro .tile {
+  animation: intro var(--intro-ms) var(--intro-ease) both;
+  animation-delay: calc(var(--d, 0) * var(--intro-stagger));
+}
+@keyframes intro { from { opacity: 0; transform: scale(var(--intro-scale)); } }
+/* a tile or card that can't be picked shakes its head */
+.cell.shake .tile, .card.shake { animation: shake var(--shake-ms) both; }
+@keyframes shake {
+  0%, 100% { translate: 0 0; }
+  15% { translate: -6px 0; }
+  35% { translate: 5px 0; }
+  55% { translate: -3px 0; }
+  75% { translate: 2px 0; }
+}
+/* a changed status or prompt line slides in; the win line pops */
+.text-in { animation: text-in var(--text-ms) ease-out; }
+@keyframes text-in { from { opacity: .2; translate: 0 -4px; } }
+#play-status.won.text-in { animation: pop-in 500ms var(--pop-ease); }
+.row.prompt button:not([hidden]) { animation: pop-in var(--text-ms) var(--card-ease); }
+@keyframes pop-in { from { scale: .8; opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .tile *, .tile *::after { animation: none !important; }
+  .tile, .tile *, .tile *::after, .tile::before, .tile::after, .card, .hand, .board, .text-in, .row.prompt button, .drag-ghost, .card-fly {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 .counter, .link, .order {
@@ -293,9 +421,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   line-height: 1;
 }
 .counter {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -342,8 +468,11 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   pointer-events: none;
 }
 .ring rect { fill: none; stroke: var(--outline); }
-/* the marching dashes repaint every frame (not transform or opacity); their own layer keeps that to the thin outline, about 7x cheaper */
-.ring.valid { will-change: transform; }
+/* the marching dashes repaint every frame (not transform or opacity); their own layer keeps that to the thin outline, about 7x cheaper.
+   an outline fades in as it appears (not while a drag fades them in itself through --drag) */
+.ring.valid { will-change: transform; animation: ring-in var(--ring-ms) var(--ring-ease) both; }
+.board.dragging .ring.valid { animation: none; }
+@keyframes ring-in { from { opacity: 0; transform: scale(var(--ring-scale)); } }
 .ring.valid rect { stroke-width: 3; stroke-opacity: .75; stroke-dasharray: 12 9; animation: ants var(--ants-ms) linear infinite; }
 .ring.lock rect { stroke-width: 5; filter: drop-shadow(0 0 7px var(--outline)); }
 .cell:is(.candidate, .targeting, .preview, .preview-outline) .ring.valid,
@@ -382,12 +511,6 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   font-weight: 700;
   text-shadow: 0 0 4px #000;
   pointer-events: none;
-}
-
-.shake { animation: shake .3s; }
-@keyframes shake {
-  25% { translate: -6px 0; }
-  75% { translate: 6px 0; }
 }
 
 .validation { padding: 10px 12px; border-radius: var(--radius); background: var(--panel); font-size: .92rem; }
@@ -436,7 +559,10 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   justify-content: safe center;
   margin-top: 4px;
   padding: 14px 4px 8px;
+  transition: opacity var(--settle-ms) ease-out var(--settle-start), translate var(--settle-ms) ease-out var(--settle-start);
 }
+/* the hand goes quiet once the level is won or the plays are used up */
+.hand.done { opacity: .55; translate: 0 4px; }
 .card {
   --effect: #555;
   position: relative;
@@ -466,6 +592,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   text-align: center;
   border: 6px solid transparent;
   cursor: pointer;
+  transition: transform var(--card-ms) var(--card-ease), border-color 150ms ease-out, opacity 200ms ease-out;
 }
 .card-head {
   display: flex;
@@ -534,9 +661,23 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   line-height: 1.5;
 }
 .card.candidate { border-color: var(--candidate); }
-.card.selected { border-color: var(--picked); transform: translateY(-6px); }
-.card.drop-target { border-color: var(--picked); }
-.card.peeking { transform: translateY(-6px) scale(1.04); }
+.card.selected { border-color: var(--picked); transform: translateY(var(--card-lift)); }
+.card.drop-target { border-color: var(--picked); transform: translateY(-3px) scale(1.04); }
+.card.peeking { transform: translateY(var(--card-lift)) scale(1.04); }
+/* the card being dragged stays in its slot, faded, until the ghost comes back or is played */
+.card.drag-source { opacity: .3; transform: scale(.95); }
+/* a card that was just played stamps down from its lifted place; a card new to the hand is dealt in (from below, or from above when
+   an undo brings it back from the board); at a new game the whole hand is dealt in one card after another */
+.card.played { animation: stamp var(--played-ms) ease-out; }
+@keyframes stamp {
+  0% { transform: translateY(var(--card-lift)); }
+  35% { transform: translateY(3px) scale(.96); }
+  100% { transform: none; }
+}
+.card.deal-in,
+.hand.intro .card { animation: deal-in var(--deal-ms) var(--deal-ease) both; }
+.hand.intro .card { animation-delay: calc(var(--i, 0) * var(--deal-stagger)); }
+@keyframes deal-in { from { opacity: 0; transform: translateY(var(--from-y, 24px)) scale(.85); } }
 .hand .card { touch-action: pan-x; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .badge {
   position: absolute;
@@ -549,19 +690,33 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   font-size: .85rem;
   font-weight: 700;
 }
+/* the ghost follows the finger through its translate; it is picked up with a small grow and tilt, and board.js flies it away on the drop */
 .drag-ghost {
   position: fixed;
+  left: 0;
+  top: 0;
   z-index: 50;
   pointer-events: none;
   opacity: .9;
   transform: translate(-50%, -75%) rotate(-4deg);
   box-shadow: 0 8px 24px #000a;
+  transition: none;
+  animation: ghost-up 160ms ease-out;
+}
+@keyframes ghost-up { from { transform: translate(-50%, -75%) rotate(0deg) scale(.92); opacity: .5; } }
+/* a copy of a card that leaves the hand (board.js flies it into the board or shrinks it away) */
+.card-fly {
+  position: fixed;
+  z-index: 50;
+  margin: 0;
+  pointer-events: none;
+  transition: none;
 }
 
 
 .row.prompt { justify-content: space-between; height: 48px; color: var(--muted); font-size: .95rem; line-height: 1.25; }
 #play-prompt { flex: 1; max-height: 2.5em; overflow: hidden; }
-#play-status { white-space: nowrap; }
+#play-status { white-space: nowrap; display: inline-block; }
 
 #play-status { font-weight: 600; }
 .play-buttons { display: flex; gap: 6px; flex-shrink: 0; }

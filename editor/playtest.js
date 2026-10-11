@@ -1,6 +1,6 @@
 // The Play tab: playtesting the open level with the real rules, and saving a solution.
 
-import { $, toast, playPrompt, playStatus, renderSnapshot, attachPlayInput } from "./board.js";
+import { $, toast, playPrompt, playStatus, renderSnapshot, attachPlayInput, setText } from "./board.js";
 import * as bridge from "./bridge.js";
 import { current, saveLevels } from "./store.js";
 import { render } from "./editor.js";
@@ -40,23 +40,21 @@ export function renderPlay() {
   const board = $("play-board");
   const hand = $("play-hand");
   const status = $("play-status");
-  status.className = "";
-  status.textContent = "";
   const snap = snapshot;
   $("play-undo").disabled = !snap?.can_undo;
   $("play-redo").disabled = !snap?.can_redo;
   $("play-cancel").hidden = !(snap && snap.selected !== null);
   $("play-save-solution").hidden = !snap?.won;
-  $("play-prompt").textContent = snap ? playPrompt(snap) : "";
+  setText($("play-prompt"), snap ? playPrompt(snap) : "");
   if (!snap) {
+    setText(status, "");
     board.replaceChildren();
     hand.replaceChildren();
     return;
   }
 
   const { text, className } = playStatus(snap, level.data.budget);
-  status.textContent = text;
-  status.className = className;
+  setText(status, text, className);
   renderSnapshot(snap, board, hand, {
     onTile: (row, col) => playTap(() => bridge.tapTile(row, col)),
     onCard: (index) => playTap(() => bridge.tapCard(index)),
