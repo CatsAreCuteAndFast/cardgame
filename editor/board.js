@@ -210,7 +210,8 @@ function stepExtras(track, index, centreRow, centreCol) {
   } else if (step.effect === "flip" && picked !== -1 && lit(cell) === lit(old) && elapsed < cssMs("--tap-ms")) {
     classes.push("dud");
   }
-  if (old.counter !== cell.counter && elapsed < cssMs("--tick-start") + cssMs("--tick-ms")) tick = true;
+  const tickFor = Math.max(cssMs("--tick-ms"), catalog.substrates.find((entry) => entry.id === cell.substrate)?.ticks === "neighbour" ? cssMs("--mark-ms") : 0);
+  if (old.counter !== cell.counter && elapsed < cssMs("--tick-start") + tickFor) tick = true;
   if (snap.won && !before.won) {
     const distance = Math.hypot(row - centreRow, col - centreCol);
     if (elapsed < cssMs("--win-start") + distance * cssMs("--win-stagger") + cssMs("--win-ms")) {

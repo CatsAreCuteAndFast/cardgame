@@ -20,16 +20,18 @@ export const isWon = (state) => state.tiles.every((tile) => tile.flipped);
 export const canPlay = (state) => state.plays > 0;
 
 // play timers count down every play and restart at their period after reaching 0.
-// neighbour timers count down once per orthogonal neighbour in flips, stay at 0, and restart at their period when their own tile flips
-function tick(level, counters, flips) {
+// neighbour timers count down once for their own tile and each orthogonal neighbour a flip card touched (flipped or not),
+// stay at 0, and restart at their period when their own tile flips
+function tick(level, counters, { flips = [], touched = [] } = {}) {
   return counters.map((counter, cell) => {
     const { period, ticks } = SUBSTRATE_TYPES[level.substrates[cell]];
     if (period === 0) return counter;
     if (ticks === "play") return counter === 0 ? period : counter - 1;
     if (flips.includes(cell)) return period;
-    return Math.max(0, counter - flips.filter((other) => isAdjacent(level.width, cell, other)).length);
+    return Math.max(0, counter - touched.filter((other) => other === cell || isAdjacent(level.width, cell, other)).length);
   });
 }
+
 
 export function canPick(state, index, picks, cell) {
   const card = state.hand[index];
@@ -41,16 +43,16 @@ export function applyMove(state, move) {
   const card = state.hand[move.card];
   const effect = EFFECTS[card.effect];
   let { tiles, hand } = state;
-  let flips = [];
+  let plan;
   if (effect.onTiles) {
     const cells = TARGETS[card.target.kind].resolve(card.target, move.cells, state.level.width);
-    flips = effect.plan(state, cells).flips;
+    plan = effect.plan(state, cells);
     tiles = effect.apply(state, cells);
   } else {
     hand = [...hand, effect.apply(hand[move.target])];
   }
   if (card.single_use) hand = hand.filter((_, index) => index !== move.card);
-  return { ...state, tiles, hand, counters: tick(state.level, state.counters, flips), plays: state.plays - 1 };
+  return { ...state, tiles, hand, counters: tick(state.level, state.counters, plan), plays: state.plays - 1 };
 }
 
 // every distinct move; picks that act the same (same set of tiles) are listed once.

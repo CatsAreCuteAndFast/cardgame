@@ -21,7 +21,9 @@ export const EFFECTS = {
         else state.tiles.forEach((tile, other) => tile.link === link && affected.add(other));
       }
       const sorted = [...affected].sort((a, b) => a - b);
-      return { affected: sorted, flips: sorted, blocked: cells.filter((cell) => !canFlipAt(state, cell)) };
+      // touched: every tile the card acts on, flipped or not (the picks and the link groups that flip), for neighbour timers
+      const touched = [...new Set([...cells, ...sorted])].sort((a, b) => a - b);
+      return { affected: sorted, flips: sorted, touched, blocked: cells.filter((cell) => !canFlipAt(state, cell)) };
     },
     apply(state, cells) {
       const tiles = [...state.tiles];
@@ -47,7 +49,7 @@ export const EFFECTS = {
     canPick: swappable,
     plan(state, cells) {
       const ok = cells.length === 2 && cells.every((cell) => swappable(state, cell));
-      return { affected: ok ? [...cells] : [], flips: [], blocked: [] };
+      return { affected: ok ? [...cells] : [], flips: [], touched: [], blocked: [] };
     },
     apply(state, cells) {
       if (cells.length !== 2) throw new Error(`swap expects 2 tiles, got ${cells.length}`);

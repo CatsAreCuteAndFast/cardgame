@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-12**: as Drifl asked, neighbour timers now count every tile a flip card touches, not only tiles that changed: a timer counts down once for its own tile and once for each orthogonal neighbour among the picked tiles (blocked ones included) and the link groups that flip (`touched` in the flip plan, used by `tick` in `game/state.js`). Its own tile flipping still resets it. A neighbour timer that changed in a play now also shows a brief orange ring around its number (`--mark-ms`, slider under Timers), a placeholder indicator. The neighbour timer test was updated for the new rule. No pack level uses neighbour timers, so no saved solutions changed.
+
 - **2026-10-11**: as Drifl asked, dropping a tile card that still needs its tiles picked (Flip one, Swap, any/adjacent flips) on the board now sinks its drag ghost into the board's centre, the way a dropped Flip all sinks into its tile, instead of flying back to the hand; the card is selected in the hand as before.
 
 - **2026-10-11**: fix from Drifl: dragging or holding a card shortly after playing it showed none of its usual animations. The played card kept its `played` class (the stamp) until the next re-render, so the drag ghost, cloned from it, replayed the stamp instead of its pick-up, and the stamp overrode the hold's lift. `played` and `deal-in` now come off when their animation ends (`addAnim` in `board.js`), and the ghost drops them too.

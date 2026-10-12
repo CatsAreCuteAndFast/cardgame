@@ -62,6 +62,7 @@ const GROUPS = [
   ]],
   ["Timers", [
     ms("--tick-start", "Tick starts", 1000), ms("--tick-ms", "Tick lasts", 1000), ease("--tick-ease", "Tick easing"),
+    ms("--mark-ms", "Neighbour timer ring lasts", 3000),
   ]],
   ["Level won", [
     ms("--win-start", "Wash starts"), ms("--win-stagger", "Per tile of distance", 300), ms("--win-ms", "Each tile's sheen lasts"),

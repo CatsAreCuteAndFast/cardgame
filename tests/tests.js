@@ -172,7 +172,7 @@ async function testBridgeUndo() {
   assert(bridge.checkSolution(retarget, [{ card: 1, target: "0" }, { card: 2, tiles: [[0, 0]] }]).error.includes("card index"), "a target must be a number");
 }
 
-// double tiles step off -> half -> lit -> off; neighbour timers count orthogonal flips, stay ready, and reset when their tile flips
+// double tiles step off -> half -> lit -> off; neighbour timers count the tiles a flip touches (their own and orthogonal ones, flipped or not), stay ready, and reset when their tile flips
 async function testDoubleAndNeighbour() {
   const flipAll = (coords) => ({ effect: "flip", target: { kind: "fixed", coords } });
   const double = parseLevel({ budget: 5, tiles: [["double"]], substrates: [["plain"]], cards: [flipAll([[0, 0]])] });
@@ -203,14 +203,22 @@ async function testDoubleAndNeighbour() {
   play({ card: 4, cells: [0, 3] });
   assert(counter() === 2, "a swap doesn't count");
   play({ card: 2, cells: [1] });
-  assert(!state.tiles[1].flipped && counter() === 2, "a neighbour timer blocks its tile until ready");
+  assert(!state.tiles[1].flipped && counter() === 1, "a neighbour timer blocks its tile until ready, and a flip on its blocked tile counts once");
   play({ card: 0, cells: [0] });
+  assert(counter() === 0, "a neighbour flip counts once");
   play({ card: 0, cells: [0] });
-  assert(counter() === 0, "each neighbour flip, on or off, counts once");
   play({ card: 1, cells: [2] });
   assert(counter() === 0, "a ready neighbour timer stays at 0");
   play({ card: 2, cells: [1] });
   assert(state.tiles[1].flipped && counter() === 2, "flipping its tile resets a neighbour timer");
+  const blockedNeighbour = parseLevel({
+    budget: 9,
+    tiles: [["notflippable", "basic"]],
+    substrates: [["plain", "twoneighbour"]],
+    cards: [flipAll([[0, 0]])],
+  });
+  state = applyMove(newState(blockedNeighbour), { card: 0, cells: [0] });
+  assert(!state.tiles[0].flipped && state.counters[1] === 1, "a neighbour the flip touches counts even when it doesn't flip");
 }
 
 export const TESTS = { testLevels, testPack, testMovesMatchPreview, testCardPlay, testBridgeUndo, testDoubleAndNeighbour };

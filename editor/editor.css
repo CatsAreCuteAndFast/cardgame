@@ -320,6 +320,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --tick-start: 120ms;
   --tick-ms: 320ms;
   --tick-ease: cubic-bezier(.2, 1.2, .4, 1);
+  --mark-ms: 1200ms;
   --lock-hold: 450ms;
   --win-start: 300ms;
   --win-stagger: 90ms;
@@ -381,6 +382,25 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 }
 .counter.tick.ready { --tick-scale: 1.6; }
 @keyframes tick { from { scale: var(--tick-scale, 1.3); opacity: .3; } }
+/* a neighbour timer that changed gets an orange ring for a moment (placeholder look) */
+.counter.near.tick::after {
+  content: "";
+  position: absolute;
+  width: 62cqw;
+  aspect-ratio: 1;
+  border: 3.5cqw solid var(--flipped);
+  border-radius: 50%;
+  box-shadow: 0 0 4cqw var(--flipped), inset 0 0 4cqw var(--flipped);
+  opacity: 0;
+  animation: mark var(--mark-ms) ease-out both;
+  animation-delay: calc(var(--step-delay, 0ms) + var(--tick-start));
+}
+@keyframes mark {
+  from { scale: .6; opacity: 0; }
+  15% { scale: 1; opacity: 1; }
+  60% { opacity: 1; }
+  to { scale: 1; opacity: 0; }
+}
 /* the tiles a play used show the lock ring for a moment (it pops in if it wasn't showing), then it fades */
 .cell.locked .ring.lock {
   display: block;
