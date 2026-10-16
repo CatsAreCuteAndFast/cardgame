@@ -8,7 +8,7 @@ export const TILE_TYPES = {
   double: { canFlip: true, canSwap: true, states: 3 },
 };
 
-// ticks: "play" timers count down on every play, "neighbour" timers once for their own tile and each orthogonal neighbour a flip card touches
+// ticks: "play" timers count down on every play, "neighbour" timers once for their own tile and each orthogonal neighbour a flip card touches; both restart at their period after 0
 export const SUBSTRATE_TYPES = {
   plain: { period: 0, ticks: "play" },
   oneturn: { period: 1, ticks: "play" },

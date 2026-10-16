@@ -172,7 +172,7 @@ async function testBridgeUndo() {
   assert(bridge.checkSolution(retarget, [{ card: 1, target: "0" }, { card: 2, tiles: [[0, 0]] }]).error.includes("card index"), "a target must be a number");
 }
 
-// double tiles step off -> half -> lit -> off; neighbour timers count the tiles a flip touches (their own and orthogonal ones, flipped or not), stay ready, and reset when their tile flips
+// double tiles step off -> half -> lit -> off; neighbour timers step for each tile a flip touches (their own and orthogonal ones, flipped or not) and cycle like play timers
 async function testDoubleAndNeighbour() {
   const flipAll = (coords) => ({ effect: "flip", target: { kind: "fixed", coords } });
   const double = parseLevel({ budget: 5, tiles: [["double"]], substrates: [["plain"]], cards: [flipAll([[0, 0]])] });
@@ -207,10 +207,12 @@ async function testDoubleAndNeighbour() {
   play({ card: 0, cells: [0] });
   assert(counter() === 0, "a neighbour flip counts once");
   play({ card: 0, cells: [0] });
+  assert(counter() === 2, "a neighbour timer at 0 restarts at its period on its next step");
   play({ card: 1, cells: [2] });
-  assert(counter() === 0, "a ready neighbour timer stays at 0");
+  play({ card: 1, cells: [2] });
+  assert(counter() === 0, "each step counts down by 1");
   play({ card: 2, cells: [1] });
-  assert(state.tiles[1].flipped && counter() === 2, "flipping its tile resets a neighbour timer");
+  assert(state.tiles[1].flipped && counter() === 2, "flipping its own ready tile steps the timer back to its period");
   const blockedNeighbour = parseLevel({
     budget: 9,
     tiles: [["notflippable", "basic"]],

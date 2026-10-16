@@ -20,15 +20,17 @@ export const isWon = (state) => state.tiles.every((tile) => tile.flipped);
 export const canPlay = (state) => state.plays > 0;
 
 // play timers count down every play and restart at their period after reaching 0.
-// neighbour timers count down once for their own tile and each orthogonal neighbour a flip card touched (flipped or not),
-// stay at 0, and restart at their period when their own tile flips
-function tick(level, counters, { flips = [], touched = [] } = {}) {
+// neighbour timers step the same way once for their own tile and each orthogonal neighbour a flip card touched (flipped or not)
+const step = (counter, period) => (counter === 0 ? period : counter - 1);
+
+function tick(level, counters, { touched = [] } = {}) {
   return counters.map((counter, cell) => {
     const { period, ticks } = SUBSTRATE_TYPES[level.substrates[cell]];
     if (period === 0) return counter;
-    if (ticks === "play") return counter === 0 ? period : counter - 1;
-    if (flips.includes(cell)) return period;
-    return Math.max(0, counter - touched.filter((other) => other === cell || isAdjacent(level.width, cell, other)).length);
+    if (ticks === "play") return step(counter, period);
+    const steps = touched.filter((other) => other === cell || isAdjacent(level.width, cell, other)).length;
+    for (let i = 0; i < steps; i++) counter = step(counter, period);
+    return counter;
   });
 }
 
