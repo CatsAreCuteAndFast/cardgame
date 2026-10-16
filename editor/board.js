@@ -290,7 +290,7 @@ function syncTile(tile, cell) {
   }
 }
 
-// a cell with its tile. the substrate (colour and timer) is the cell's and never changes in a game; the tile's look comes from syncTile.
+// a cell with its tile and outlines. the substrate (colour and timer) is the cell's and never changes in a game; the tile's look comes from syncTile.
 // tile: { style } goes on the .tile itself (the intro's distance from the middle)
 export function renderCell(cell, { classes = [], order = null, onclick, grain = 0, tile: extra = {} }) {
   const substrate = catalog.substrates.find((entry) => entry.id === cell.substrate);
@@ -307,10 +307,9 @@ export function renderCell(cell, { classes = [], order = null, onclick, grain = 
         : null,
       order !== null ? el("span", { class: "order", textContent: order }) : null,
     ]),
-    ring("valid"),
-    ring("lock"),
   ]);
   syncTile(tile, cell);
+  // the outlines mark the cell, not the tile, so they stay put when a swap slides the tiles across
   return el(
     "div",
     {
@@ -318,16 +317,17 @@ export function renderCell(cell, { classes = [], order = null, onclick, grain = 
       style: cell.period > 0 ? `background:${SUBSTRATE_COLORS[cell.substrate] ?? "#555"}` : "",
       onclick,
     },
-    tile,
+    [tile, ring("valid"), ring("lock")],
   );
 }
 
-// a tile outline (art/outlines): a rounded rect 8/110 of the tile outside it, dashes measured on a 420-long path
+// a tile outline (art/outlines): a rounded rect 8/110 of the tile outside it, dashes measured on a 420-long path.
+// drawn as a path, not a rect: Safari ignores pathLength on a rect, which left the dashes breaking at the top-left where the path starts
 function ring(kind) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", `ring ${kind}`);
   svg.setAttribute("viewBox", "0 0 126 126");
-  svg.innerHTML = '<rect x="1.5" y="1.5" width="123" height="123" rx="21" pathLength="420"/>';
+  svg.innerHTML = '<path d="M22.5 1.5H103.5A21 21 0 0 1 124.5 22.5V103.5A21 21 0 0 1 103.5 124.5H22.5A21 21 0 0 1 1.5 103.5V22.5A21 21 0 0 1 22.5 1.5Z" pathLength="420"/>';
   return svg;
 }
 
