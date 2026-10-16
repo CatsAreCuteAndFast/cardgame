@@ -213,36 +213,24 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
     repeating-linear-gradient(45deg, #ffffff12 0 9.06cqw, transparent 9.06cqw 18.12cqw);
 }
 
-/* flip (flipTile in board.js runs it): the face is pushed in, the light spreads from the centre (the base's orange edge fades in with it)
-   and the glow fades in as it reaches the edges, then the face recoils like a button: it travels on deeper, springs back a little past its
-   resting depth and settles, on its own `translate`, so it adds to the press. unflip runs the other way: the face springs up past its rest,
-   dips back a little and settles. each part has its own start, length and easing, for flipping and for unflipping (-off), all in ms */
+/* flip (flipTile in board.js runs it): the face travels on one spring from where it is to its resting depth (--press when lit), pushed
+   --flip-extra past it first on a flip and lifted --flip-extra-off past its rest on an unflip, bouncing back to settle (--flip-stiffness and
+   --flip-damping shape it: a lower damping bounces more). on a flip, the light spreads from the centre when the face first reaches its resting
+   depth (the base's orange edge fades in with it) and the glow fades in as it reaches the edges; on an unflip they fade as the face is let go */
 :root {
   --press: 8.333%;
-  --press-start: 0ms;
-  --press-ms: 180ms;
-  --press-ease: cubic-bezier(.32, 0, .67, 0);
-  --light-start: 70ms;
+  --flip-stiffness: 250;
+  --flip-damping: .5;
+  --flip-extra: 2%;
+  --flip-extra-off: 1%;
   --light-ms: 300ms;
   --light-ease: cubic-bezier(.32, 0, .67, 0);
-  --glow-start: 110ms;
   --glow-ms: 170ms;
-  --recoil-start: 180ms;
-  --recoil-ms: 440ms;
-  --recoil-depth: 2cqh;
-  --press-start-off: 60ms;
-  --press-ms-off: 230ms;
-  --press-ease-off: cubic-bezier(.32, 0, .67, 0);
-  --light-start-off: 90ms;
   --light-ms-off: 330ms;
   --light-ease-off: cubic-bezier(.32, 0, .67, 0);
-  --glow-start-off: 180ms;
   --glow-ms-off: 210ms;
-  --recoil-start-off: 290ms;
-  --recoil-ms-off: 320ms;
-  --recoil-depth-off: -1cqh;
-  --recoil-back: .35;
 }
+
 /* the other board animations (board.js starts them on the tiles). all of them are transforms and opacity on layers that are drawn once
    (the marching dashes are the one exception), so a 5-8 year old phone runs them; each has its start, length and easing on :root for the
    Animations panel */

@@ -83,37 +83,111 @@ function animate(node, channel, keyframes, options) {
 // waits for animations to end (an interrupted one counts as ended)
 const settled = (anims) => Promise.all(anims.map((anim) => anim.finished.catch(() => {}))).then(() => {});
 
-// flips the look of a tile from lit level `from` to `to` (0, .5 for half or 1), after delay ms: the face is pressed in (or released), the light
-// disc grows (or shrinks) from the centre while the base's orange edge fades in, the glow fades in as the disc reaches the edges, then the face
-// recoils like a button on its own `translate`, so it adds to the press. unflipping runs the parts with their -off values the other way.
-// a step to or from half that isn't lit only grows or shrinks the light. returns when the flip ends
+// a damped spring: the offset x0 from rest and speed v0 at time 0, omega the angular frequency (the square root of the stiffness) and
+// zeta the damping ratio (under 1 bounces). returns the offset and speed at t seconds
+function spring(x0, v0, omega, zeta) {
+  const a = zeta * omega;
+  if (zeta < 1) {
+    const wd = omega * Math.sqrt(1 - zeta * zeta);
+    const b = (v0 + a * x0) / wd;
+    return (t) => {
+      const decay = Math.exp(-a * t);
+      const cos = Math.cos(wd * t);
+      const sin = Math.sin(wd * t);
+      return [decay * (x0 * cos + b * sin), decay * ((b * wd - a * x0) * cos - (x0 * wd + a * b) * sin)];
+    };
+  }
+  const s = Math.sqrt(zeta * zeta - 1) * omega;
+  if (s < 1e-6) {
+    const b = v0 + omega * x0;
+    return (t) => {
+      const decay = Math.exp(-omega * t);
+      return [decay * (x0 + b * t), decay * (b - omega * (x0 + b * t))];
+    };
+  }
+  const r1 = -a + s;
+  const r2 = -a - s;
+  const c1 = (v0 - r2 * x0) / (r1 - r2);
+  const c2 = x0 - c1;
+  return (t) => [c1 * Math.exp(r1 * t) + c2 * Math.exp(r2 * t), c1 * r1 * Math.exp(r1 * t) + c2 * r2 * Math.exp(r2 * t)];
+}
+
+const SPRING_STEP = 1 / 60;
+const SPRING_MAX = 1.5;
+
+// the face's travel on a flip, as a spring from where it is (x0 past the target) to its resting depth, pushed so that it first goes `extra`
+// past the target in the travel's direction `dir`. returns the spring's evaluator and when it has settled and when it first
+// reaches the target (the click), in seconds
+function pressTravel(x0, dir, extra, omega, zeta, depth) {
+  const overshoot = (push) => {
+    const at = spring(x0, push, omega, zeta);
+    let most = -Infinity;
+    for (let t = 0; t <= SPRING_MAX; t += SPRING_STEP) most = Math.max(most, dir * at(t)[0]);
+    return most;
+  };
+  // the push (a speed along dir, never against it) is found by bisection: the harder the push, the farther the first turn-around.
+  // a soft spring's own bounce may already go farther than `extra`; then there is no push
+  let low = 0;
+  let high = overshoot(0) >= extra ? 0 : 60 * depth;
+  for (let i = 0; i < 40; i++) {
+    const mid = (low + high) / 2;
+    if (overshoot(dir * mid) < extra) low = mid;
+    else high = mid;
+  }
+  const at = spring(x0, dir * high, omega, zeta);
+  let click = null;
+  let settled = SPRING_MAX;
+  for (let t = 0; t <= SPRING_MAX; t += SPRING_STEP) {
+    const [x, v] = at(t);
+    if (click === null && dir * x >= -0.05 * depth) click = t;
+    if (Math.abs(x) < 0.015 * depth && Math.abs(v) * SPRING_STEP < 0.015 * depth) {
+      settled = t;
+      break;
+    }
+  }
+  return { at, click: click ?? settled, settled };
+}
+
+// per face: the spring it is on, so a flip interrupting it carries on from the face's current position
+const travels = new WeakMap();
+
+// flips the look of a tile from lit level `from` to `to` (0, .5 for half or 1), after delay ms, like a button: the face travels on one spring
+// (press depth --press, --flip-stiffness, --flip-damping) from where it is to its resting depth, pushed --flip-extra past it first on a flip
+// and lifted --flip-extra-off past its rest on an unflip, and bounces back to settle. on a flip, the light disc grows from the centre when the
+// face first reaches its resting depth (the click) while the base's orange edge fades in, and the glow fades in as the disc reaches the edges.
+// on an unflip, the light shrinks and the glow fades as the face is let go. a step to or from half that isn't lit only grows or shrinks
+// the light. returns when the flip ends
 export function flipTile(tile, from, to, delay = 0) {
   const on = to > from;
   const off = on ? "" : "-off";
-  const part = (name, easing = "linear") => ({ delay: delay + cssMs(`--${name}-start${off}`), duration: cssMs(`--${name}-ms${off}`), easing });
   const [face, light, glow, edge] = [".face", ".light", ".glow", ".edge"].map((selector) => tile.querySelector(selector));
-  const anims = [animate(light, "transform", [{ transform: `scale(${from})` }, { transform: `scale(${to})` }], part("light", cssValue(`--light-ease${off}`)))];
-  if (Math.max(from, to) === 1) {
-    const press = cssValue("--press");
-    const depth = cssValue(`--recoil-depth${off}`);
-    const back = parseFloat(cssValue("--recoil-back")) || 0;
-    anims.push(
-      animate(face, "transform", [{ transform: `translateY(${on ? 0 : press})` }, { transform: `translateY(${on ? press : 0})` }], part("press", cssValue(`--press-ease${off}`))),
-      animate(edge, "opacity", [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], part("light")),
-      animate(glow, "opacity", [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], part("glow")),
-      animate(
-        face,
-        "translate",
-        [
-          { translate: "0 0", easing: "cubic-bezier(.2, .6, .4, 1)" },
-          { translate: `0 ${depth}`, easing: "ease-in-out", offset: 0.3 },
-          { translate: `0 calc(${depth} * ${-back})`, easing: "ease-in-out", offset: 0.65 },
-          { translate: "0 0" },
-        ],
-        part("recoil"),
-      ),
-    );
+  const lightMs = cssMs(`--light-ms${off}`);
+  const lightEase = cssValue(`--light-ease${off}`);
+  if (Math.max(from, to) < 1) {
+    return settled([animate(light, "transform", [{ transform: `scale(${from})` }, { transform: `scale(${to})` }], { delay, duration: lightMs, easing: lightEase })]);
   }
+  const depth = parseFloat(cssValue("--press")) || 0;
+  const target = on ? depth : 0;
+  const now = performance.now();
+  // from rest, or from where a travel still running has got (a finished one says nothing: a swap may have moved another tile here)
+  const prev = travels.get(face);
+  const y = prev && now < prev.start + prev.settled * 1000 ? prev.target + prev.at(Math.max(0, (now - prev.start) / 1000))[0] : on ? 0 : depth;
+  const x0 = y - target;
+  const omega = Math.sqrt(parseFloat(cssValue("--flip-stiffness")) || 250);
+  const zeta = parseFloat(cssValue("--flip-damping")) || 0.5;
+  const extra = parseFloat(cssValue(`--flip-extra${off}`)) || 0;
+  const travel = pressTravel(x0, on ? 1 : -1, extra, omega, zeta, depth);
+  travels.set(face, { ...travel, start: now + delay, target });
+  const frames = [];
+  for (let t = 0; t < travel.settled; t += SPRING_STEP) frames.push({ transform: `translateY(${(target + travel.at(t)[0]).toFixed(3)}%)`, offset: t / travel.settled });
+  frames.push({ transform: `translateY(${target}%)`, offset: 1 });
+  const click = on ? delay + travel.click * 1000 : delay;
+  const anims = [
+    animate(face, "transform", frames, { delay, duration: travel.settled * 1000 }),
+    animate(light, "transform", [{ transform: `scale(${from})` }, { transform: `scale(${to})` }], { delay: click, duration: lightMs, easing: lightEase }),
+    animate(edge, "opacity", [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { delay: click, duration: lightMs }),
+    animate(glow, "opacity", [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { delay: on ? click + 0.4 * lightMs : click, duration: cssMs(`--glow-ms${off}`) }),
+  ];
   return settled(anims);
 }
 

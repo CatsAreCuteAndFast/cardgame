@@ -23,22 +23,17 @@ const ms = (name, label, max = 1500) => ({ name, label, unit: "ms", min: 0, max,
 const ease = (name, label) => ({ name, label, ease: true });
 const GROUPS = [
   ["Tile flip", [
-    ms("--light-start", "Light starts"), ms("--light-ms", "Light spreads for"), ease("--light-ease", "Light easing"),
-    ms("--glow-start", "Glow starts"), ms("--glow-ms", "Glow fades for"),
-    ms("--press-start", "Press starts"), ms("--press-ms", "Press lasts"), ease("--press-ease", "Press easing"),
-    ms("--recoil-start", "Recoil starts"), ms("--recoil-ms", "Recoil lasts"),
-    { name: "--recoil-depth", label: "Extra push", unit: "cqh", min: -4, max: 4, step: 0.1 },
+    { name: "--press", label: "Press depth", unit: "%", min: 0, max: 15, step: 0.1 },
+    { name: "--flip-stiffness", label: "Spring stiffness", unit: "", min: 50, max: 1200, step: 10 },
+    { name: "--flip-damping", label: "Spring damping", unit: "", min: 0.1, max: 1.5, step: 0.05 },
+    { name: "--flip-extra", label: "Pushed past rest", unit: "%", min: 0, max: 6, step: 0.1 },
+    ms("--light-ms", "Light spreads for"), ease("--light-ease", "Light easing"),
+    ms("--glow-ms", "Glow fades in for"),
   ]],
   ["Tile unflip", [
-    ms("--light-start-off", "Light starts"), ms("--light-ms-off", "Light shrinks for"), ease("--light-ease-off", "Light easing"),
-    ms("--glow-start-off", "Glow starts"), ms("--glow-ms-off", "Glow fades for"),
-    ms("--press-start-off", "Release starts"), ms("--press-ms-off", "Release lasts"), ease("--press-ease-off", "Release easing"),
-    ms("--recoil-start-off", "Recoil starts"), ms("--recoil-ms-off", "Recoil lasts"),
-    { name: "--recoil-depth-off", label: "Extra push (− is up)", unit: "cqh", min: -4, max: 4, step: 0.1 },
-  ]],
-  ["Tile flip and unflip", [
-    { name: "--press", label: "Press depth", unit: "%", min: 0, max: 15, step: 0.1 },
-    { name: "--recoil-back", label: "Spring back ×", unit: "", min: 0, max: 1, step: 0.05 },
+    { name: "--flip-extra-off", label: "Lifted past rest", unit: "%", min: 0, max: 6, step: 0.1 },
+    ms("--light-ms-off", "Light shrinks for"), ease("--light-ease-off", "Light easing"),
+    ms("--glow-ms-off", "Glow fades out for"),
   ]],
   ["Tile outline", [
     ms("--ring-ms", "Outline fades in for", 1000), ease("--ring-ease", "Fade-in easing"),
