@@ -43,60 +43,200 @@ export function cssValue(name) {
 }
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// how long a flip runs in ms: the longest part (press, light, glow, recoil) of flipping or unflipping, from the CSS variables in editor.css
-export function flipDuration() {
-  const ends = [];
-  for (const part of ["press", "light", "glow", "recoil"]) {
-    for (const off of ["", "-off"]) ends.push(cssMs(`--${part}-start${off}`) + cssMs(`--${part}-ms${off}`));
-  }
-  return Math.max(...ends);
-}
-
 // which part of the grain (grain.js) tile or card number n shows, so neighbours don't share the same grain
 function grainSpot(n) {
   const hash = Math.imul(n + 1, 2654435761) >>> 0;
   return `--gx:${hash % 100}%;--gy:${(hash >>> 8) % 100}%;`;
 }
 
-// anim: { on, elapsed, total, from?, to? } plays the press-and-light (or reverse) animation, already elapsed ms in (negative waits);
-// from/to are how lit the tile is before and after (0, .5 for half or 1), and a step to or from half without lit only grows or shrinks the light.
-// the animation classes come off when it ends, so the browser drops the layers it made for it.
-// tile: { classes, style, tick } go on the .tile itself, for the one-shot step animations (swap, dud, win, intro) and the timer's tick
-export function renderCell(cell, { classes = [], order = null, onclick, anim = null, grain = 0, tile: extra = {} }) {
-  const tileType = catalog.tiles.find((tile) => tile.id === cell.type);
-  const tileClasses = ["tile", ...(extra.classes ?? [])];
-  if (cell.flipped) tileClasses.push("flipped");
-  if (cell.half) tileClasses.push("half");
-  if (tileType && !tileType.can_flip) tileClasses.push("nf");
-  if (tileType && !tileType.can_swap) tileClasses.push("ns");
-  if (tileType?.states === 3) tileClasses.push("three");
-  const from = anim?.from ?? (anim?.on ? 0 : 1);
-  const to = anim?.to ?? (anim?.on ? 1 : 0);
-  if (anim) tileClasses.push(Math.max(from, to) < 1 ? "anim-half" : anim.on ? "anim-on" : "anim-off");
+// the tile and board animations are started from here (Web Animations API) on tiles that live for the whole game, so a re-render never
+// restarts or cuts one short. a node keeps its running animation per channel (the properties it moves); starting another on the same channel
+// first commits the old one's current value and drops the new one's first keyframe, so an interrupted animation (a flip undone while it runs)
+// carries on from where it is instead of jumping. the committed value is cleared when the animation ends, so the classes' values apply again.
+// nothing runs when the user prefers reduced motion (a finished animation is returned, so callers can still wait on it)
+const running = new WeakMap();
+
+function animate(node, channel, keyframes, options) {
+  let channels = running.get(node);
+  if (!channels) running.set(node, (channels = new Map()));
+  const old = channels.get(channel);
+  const interrupted = old && old.playState !== "finished";
+  if (old) {
+    // a hidden node (a ring that isn't shown) has no current value to commit
+    if (interrupted) try { old.commitStyles(); } catch {}
+    old.cancel();
+  }
+  const frames = interrupted && keyframes.length > 1 ? keyframes.slice(1) : keyframes;
+  const anim = node.animate(frames, { fill: "backwards", ...options, ...(reducedMotion() ? { duration: 0, delay: 0 } : {}) });
+  channels.set(channel, anim);
+  anim.finished.then(
+    () => {
+      if (channels.get(channel) !== anim) return;
+      channels.delete(channel);
+      for (const prop of channel.split(" ")) node.style.removeProperty(prop);
+    },
+    () => {},
+  );
+  return anim;
+}
+
+// waits for animations to end (an interrupted one counts as ended)
+const settled = (anims) => Promise.all(anims.map((anim) => anim.finished.catch(() => {}))).then(() => {});
+
+// flips the look of a tile from lit level `from` to `to` (0, .5 for half or 1), after delay ms: the face is pressed in (or released), the light
+// disc grows (or shrinks) from the centre while the base's orange edge fades in, the glow fades in as the disc reaches the edges, then the face
+// recoils like a button on its own `translate`, so it adds to the press. unflipping runs the parts with their -off values the other way.
+// a step to or from half that isn't lit only grows or shrinks the light. returns when the flip ends
+export function flipTile(tile, from, to, delay = 0) {
+  const on = to > from;
+  const off = on ? "" : "-off";
+  const part = (name, easing = "linear") => ({ delay: delay + cssMs(`--${name}-start${off}`), duration: cssMs(`--${name}-ms${off}`), easing });
+  const [face, light, glow, edge] = [".face", ".light", ".glow", ".edge"].map((selector) => tile.querySelector(selector));
+  const anims = [animate(light, "transform", [{ transform: `scale(${from})` }, { transform: `scale(${to})` }], part("light", cssValue(`--light-ease${off}`)))];
+  if (Math.max(from, to) === 1) {
+    const press = cssValue("--press");
+    const depth = cssValue(`--recoil-depth${off}`);
+    const back = parseFloat(cssValue("--recoil-back")) || 0;
+    anims.push(
+      animate(face, "transform", [{ transform: `translateY(${on ? 0 : press})` }, { transform: `translateY(${on ? press : 0})` }], part("press", cssValue(`--press-ease${off}`))),
+      animate(edge, "opacity", [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], part("light")),
+      animate(glow, "opacity", [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], part("glow")),
+      animate(
+        face,
+        "translate",
+        [
+          { translate: "0 0", easing: "cubic-bezier(.2, .6, .4, 1)" },
+          { translate: `0 ${depth}`, easing: "ease-in-out", offset: 0.3 },
+          { translate: `0 calc(${depth} * ${-back})`, easing: "ease-in-out", offset: 0.65 },
+          { translate: "0 0" },
+        ],
+        part("recoil"),
+      ),
+    );
+  }
+  return settled(anims);
+}
+
+// a tapped tile presses in like a button and comes back (also a picked tile that a flip left unchanged)
+function pressTile(tile) {
+  const depth = cssValue("--tap-depth");
+  animate(
+    tile.querySelector(".face"),
+    "translate",
+    [{ translate: "0 0", easing: "cubic-bezier(.2, .6, .4, 1)" }, { translate: `0 ${depth}`, easing: "ease-in-out", offset: 0.4 }, { translate: "0 0" }],
+    { duration: cssMs("--tap-ms") },
+  );
+}
+
+// a newly picked tile: the lock ring pops in while the dashes fade out (lock-in keeps the dashes shown for the crossfade)
+function lockIn(cell) {
+  cell.classList.add("lock-in");
+  const pop = [{ transform: `scale(${cssValue("--pop-scale")})`, opacity: 0 }, { transform: "none", opacity: 1 }];
+  animate(cell.querySelector(".ring.lock"), "transform opacity", pop, { duration: cssMs("--pop-ms"), easing: cssValue("--pop-ease") });
+  const fade = animate(cell.querySelector(".ring.valid"), "opacity", [{ opacity: 1 }, { opacity: 0 }], { duration: cssMs("--lock-ms"), easing: cssValue("--lock-ease") });
+  settled([fade]).then(() => cell.classList.remove("lock-in"));
+}
+
+// after a play, the tiles it used keep the lock ring for --lock-hold (it pops in unless it was already showing) and then it fades
+function holdLock(cell, popIn) {
+  cell.classList.add("locked");
+  const hold = cssMs("--lock-hold");
+  const total = hold + cssMs("--lock-ms");
+  const popEnd = Math.min(cssMs("--pop-ms"), hold) / total;
+  const frames = popIn
+    ? [{ transform: `scale(${cssValue("--pop-scale")})`, opacity: 0, easing: cssValue("--pop-ease") }, { transform: "none", opacity: 1, offset: popEnd }]
+    : [{ transform: "none", opacity: 1 }];
+  frames.push({ transform: "none", opacity: 1, offset: hold / total, easing: "ease-out" }, { transform: "none", opacity: 0 });
+  const anim = animate(cell.querySelector(".ring.lock"), "transform opacity", frames, { duration: total, fill: "both" });
+  settled([anim]).then(() => {
+    cell.classList.remove("locked");
+    anim.cancel();
+  });
+}
+
+// swapped tiles slide into each other's cell: the tile now in this cell comes in from dx, dy cells away; the first pick (over) lifts over
+// the other, which sinks a little. the slide starts a cell pitch away: the tile's own width is .86 of the cell (see .cell), plus the board's gap
+function swapTile(cell, dx, dy, over, gap) {
+  const tile = cell.querySelector(".tile");
+  const zClass = over ? "swap-over" : "swap-under";
+  cell.classList.add(zClass);
+  const shift = (d) => `calc(${d} * (100% / .86 + ${gap}))`;
+  const ms = cssMs("--swap-ms");
+  const move = animate(tile, "transform", [{ transform: `translate(${shift(dx)}, ${shift(dy)})` }, { transform: "none" }], { duration: ms, easing: cssValue("--swap-ease") });
+  animate(tile, "scale", [{ scale: 1 }, { scale: cssValue(over ? "--swap-lift" : "--swap-sink"), offset: 0.5 }, { scale: 1 }], { duration: ms, easing: "ease-in-out" });
+  settled([move]).then(() => cell.classList.remove(zClass));
+}
+
+// a timer that changed pops its number in (bigger when it reaches 0 and the tile is ready); a neighbour timer also rings for a moment
+function tickCounter(cell, ready) {
+  const counter = cell.querySelector(".counter");
+  if (!counter) return;
+  const delay = cssMs("--tick-start");
+  animate(counter, "scale opacity", [{ scale: ready ? 1.6 : 1.3, opacity: 0.3 }, { scale: 1, opacity: 1 }], { duration: cssMs("--tick-ms"), delay, easing: cssValue("--tick-ease") });
+  const mark = counter.querySelector(".mark");
+  if (mark) {
+    animate(
+      mark,
+      "scale opacity",
+      [{ scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, offset: 0.15 }, { scale: 1, opacity: 1, offset: 0.6 }, { scale: 1, opacity: 0 }],
+      { duration: cssMs("--mark-ms"), delay, easing: "ease-out" },
+    );
+  }
+}
+
+// winning: as the wash passes a tile (later the farther it is from the middle) it swells a little and a white sheen passes over its face
+function winTile(tile, distance) {
+  const options = { duration: cssMs("--win-ms"), delay: cssMs("--win-start") + distance * cssMs("--win-stagger"), easing: "ease-in-out" };
+  animate(tile, "scale", [{ scale: 1 }, { scale: cssValue("--win-swell"), offset: 0.4 }, { scale: 1 }], options);
+  animate(tile.querySelector(".flash"), "opacity", [{ opacity: 0 }, { opacity: cssValue("--win-flash"), offset: 0.35 }, { opacity: 0 }], options);
+}
+
+// makes a tile's look match the cell: its type, lit state, link and timer. the tile's node stays, so its animations keep running
+function syncTile(tile, cell) {
+  const tileType = catalog.tiles.find((entry) => entry.id === cell.type);
+  tile.title = cell.type;
+  tile.classList.toggle("flipped", Boolean(cell.flipped));
+  tile.classList.toggle("half", Boolean(cell.half));
+  tile.classList.toggle("nf", Boolean(tileType && !tileType.can_flip));
+  tile.classList.toggle("ns", Boolean(tileType && !tileType.can_swap));
+  tile.classList.toggle("three", tileType?.states === 3);
+  const face = tile.querySelector(".face");
+  const pips = face.querySelector(".pips");
+  if (tileType?.states === 3 && !pips) face.append(el("span", { class: "pips" }, [el("i"), el("i")]));
+  else if (tileType?.states !== 3) pips?.remove();
+  const counter = face.querySelector(".counter");
+  if (counter) counter.firstChild.textContent = cell.counter;
   const linkIndex = typeof cell.link === "string" ? Number(cell.link) : cell.link;
-  const style =
-    grainSpot(grain) + (anim ? `--anim-delay:${-Math.round(anim.elapsed)}ms;--l-from:${from};--l-to:${to};` : "") + (extra.style ?? "");
+  let link = face.querySelector(".link");
+  if (linkIndex === null || linkIndex === undefined || linkIndex === -1) link?.remove();
+  else {
+    if (!link) face.append((link = el("span", { class: "link" })));
+    link.textContent = `L${linkIndex}`;
+    link.style.background = LINK_COLORS[linkIndex % LINK_COLORS.length];
+  }
+}
+
+// a cell with its tile. the substrate (colour and timer) is the cell's and never changes in a game; the tile's look comes from syncTile.
+// tile: { style } goes on the .tile itself (the intro's distance from the middle)
+export function renderCell(cell, { classes = [], order = null, onclick, grain = 0, tile: extra = {} }) {
   const substrate = catalog.substrates.find((entry) => entry.id === cell.substrate);
-  const counterClass = "counter" + (substrate?.ticks === "neighbour" ? " near" : "") + (extra.tick ? (cell.counter === 0 ? " tick ready" : " tick") : "");
-  const tile = el("div", { class: tileClasses.join(" "), title: cell.type, style }, [
-    el("div", { class: "base" }),
+  const tile = el("div", { class: "tile", style: grainSpot(grain) + (extra.style ?? "") }, [
+    el("div", { class: "base" }, [el("div", { class: "edge" })]),
     el("div", { class: "face" }, [
       el("div", { class: "light" }),
       el("div", { class: "grain" }),
       el("div", { class: "shade" }),
       el("div", { class: "glow" }),
       el("div", { class: "flash" }),
-      tileType?.states === 3 ? el("span", { class: "pips" }, [el("i"), el("i")]) : null,
-      cell.period > 0 ? el("span", { class: counterClass, textContent: cell.counter }) : null,
-      linkIndex !== null && linkIndex !== -1
-        ? el("span", { class: "link", textContent: `L${linkIndex}`, style: `background:${LINK_COLORS[linkIndex % LINK_COLORS.length]}` })
+      cell.period > 0
+        ? el("span", { class: "counter" + (substrate?.ticks === "neighbour" ? " near" : "") }, [document.createTextNode(""), substrate?.ticks === "neighbour" ? el("i", { class: "mark" }) : null])
         : null,
       order !== null ? el("span", { class: "order", textContent: order }) : null,
     ]),
     ring("valid"),
     ring("lock"),
   ]);
-  if (anim) setTimeout(() => tile.classList.remove("anim-on", "anim-off", "anim-half"), anim.total - anim.elapsed);
+  syncTile(tile, cell);
   return el(
     "div",
     {
@@ -117,109 +257,54 @@ function ring(kind) {
   return svg;
 }
 
-// the board is rebuilt after every play, which restarts the marching dashes; starting them all at time 0 keeps every outline in step
+// the board is updated in place, so the marching dashes keep running; starting a newly shown outline's at time 0 keeps every outline in step
 function syncAnts(board) {
   for (const anim of board.getAnimations({ subtree: true })) if (anim.animationName === "ants") anim.startTime = 0;
 }
 
-// per board: the picked tiles last shown, so only a newly picked tile pops its outline in and presses;
-// returns the keys ("row,col") that were picked last time
-const pickHistory = new WeakMap();
-
-function lastPicked(board, snap) {
-  const prev = pickHistory.get(board);
-  pickHistory.set(board, { game: snap.game_id, keys: snap.picked.map(([row, col]) => `${row},${col}`) });
-  return prev && prev.game === snap.game_id ? prev.keys : [];
-}
-
-// per board: the last snapshot shown, when its last one-play step (a play, undo or redo) happened and which move it was,
-// and when each tile last flipped, so the step's animations continue across re-renders.
-// only a step in the same game animates; a new game (loading, reset, another level) gets the intro instead.
-// a tile flipped through its link (not picked itself) starts --link-delay later than the picked one; swapped tiles slide instead of flipping
+// per board: the game and position last shown, so a render can tell a one-play step (a play, undo or redo: the plays left differ by 1
+// in the same game) from a new game or a selection change. a step animates what changed between the two snapshots
 const boardHistory = new WeakMap();
 
 function trackBoard(board, snap) {
-  const now = performance.now();
   const prev = boardHistory.get(board);
   const sameGame = Boolean(prev && prev.game === snap.game_id);
   const stepped = sameGame && Math.abs(prev.plays - snap.plays) === 1;
-  const step = stepped ? snap.step : null;
-  const listed = (list, index) => list.some(([row, col]) => row * snap.width + col === index);
-  const swapped = step?.effect === "swap" ? step.cells : [];
-  const linkDelay = cssMs("--link-delay");
-  const changed = snap.cells.map((cell, index) => stepped && lit(cell) !== lit(prev.snap.cells[index]) && !listed(swapped, index));
-  const changedAt = snap.cells.map((cell, index) => {
-    if (!sameGame) return -Infinity;
-    if (!changed[index]) return prev.changedAt[index];
-    return now + (listed(step.cells, index) ? 0 : linkDelay);
-  });
-  const changedFrom = snap.cells.map((cell, index) => (!sameGame ? 0 : changed[index] ? lit(prev.snap.cells[index]) : prev.changedFrom[index]));
-  const entry = {
-    game: snap.game_id,
-    plays: snap.plays,
-    snap,
-    sameGame,
-    stepped,
-    changedAt,
-    changedFrom,
-    stepAt: stepped ? now : sameGame ? prev.stepAt : -Infinity,
-    step: stepped ? step : sameGame ? prev.step : null,
-    before: stepped ? prev.snap : sameGame ? prev.before : null,
-  };
-  boardHistory.set(board, entry);
-  return entry;
+  boardHistory.set(board, { game: snap.game_id, plays: snap.plays, snap });
+  return { sameGame, stepped, step: stepped ? snap.step : null, before: stepped ? prev.snap : null };
 }
 
 // how lit a tile is: 0 off, .5 half (three-state tiles), 1 lit
 const lit = (cell) => (cell.flipped ? 1 : cell.half ? 0.5 : 0);
 
-function flipAnimations(track) {
-  const now = performance.now();
-  const total = flipDuration();
-  return track.snap.cells.map((cell, index) => {
-    const elapsed = now - track.changedAt[index];
-    const to = lit(cell);
-    const from = track.changedFrom[index];
-    return elapsed < total ? { on: to > from, from, to, elapsed, total } : null;
+// the step's animations: swapped tiles slide across (the first pick over the other), changed tiles flip (those flipped through a link
+// start --link-delay after the picked ones), a picked tile that didn't change presses as a dud, timers that changed tick, the tiles a play
+// used show the lock ring for a moment, and when the step won a wash runs out from the board's middle over the tiles.
+// wasPicked says per cell whether its lock ring was already showing, so it doesn't pop in again
+function animateStep(board, cells, { step, before }, snap, wasPicked) {
+  if (!step || !before) return;
+  const centreRow = (snap.height - 1) / 2;
+  const centreCol = (snap.width - 1) / 2;
+  const gap = getComputedStyle(board).getPropertyValue("--gap").trim() || "0px";
+  const linkDelay = cssMs("--link-delay");
+  snap.cells.forEach((cell, index) => {
+    const node = cells[index];
+    const tile = node.querySelector(".tile");
+    const old = before.cells[index];
+    const row = Math.floor(index / snap.width);
+    const col = index % snap.width;
+    const picked = step.cells.findIndex((coord) => sameCoord(coord, [row, col]));
+    if (step.effect === "swap" && step.cells.length === 2 && picked !== -1) {
+      // the tile now in the second pick's cell is the one picked first: it travels over the other
+      const other = step.cells[1 - picked];
+      swapTile(node, other[1] - col, other[0] - row, picked === 1, gap);
+    } else if (lit(cell) !== lit(old)) flipTile(tile, lit(old), lit(cell), picked === -1 ? linkDelay : 0);
+    else if (step.effect === "flip" && picked !== -1) pressTile(tile);
+    if (old.counter !== cell.counter) tickCounter(node, cell.counter === 0);
+    if (picked !== -1 && !step.reverse) holdLock(node, !wasPicked[index]);
+    if (snap.won && !before.won) winTile(tile, Math.hypot(row - centreRow, col - centreCol));
   });
-}
-
-// the one-shot animations a step gives the tile at index: swapped tiles slide across (the first pick over the other), a picked tile that
-// didn't change presses and comes back (dud), a timer that changed ticks, the tiles a play used show the lock ring for a moment (locked),
-// and when the step won a wash runs out from the board's middle, swelling each tile a little with a sheen over its face
-function stepExtras(track, index, centreRow, centreCol) {
-  const { step, before, snap } = track;
-  const elapsed = performance.now() - track.stepAt;
-  const row = Math.floor(index / snap.width);
-  const col = index % snap.width;
-  const classes = [];
-  const cellClasses = [];
-  let style = `--step-delay:${-Math.round(elapsed)}ms;`;
-  let tick = false;
-  if (!step || !before) return { classes, cellClasses, style, tick };
-  const cell = snap.cells[index];
-  const old = before.cells[index];
-  const picked = step.cells.findIndex((coord) => sameCoord(coord, [row, col]));
-  if (picked !== -1 && !step.reverse && elapsed < cssMs("--lock-hold") + cssMs("--lock-ms")) cellClasses.push("locked");
-  if (step.effect === "swap" && step.cells.length === 2 && picked !== -1 && elapsed < cssMs("--swap-ms")) {
-    // the tile now in the second pick's cell is the one picked first: it travels over the other
-    const other = step.cells[1 - picked];
-    classes.push("swap", picked === 1 ? "over" : "under");
-    cellClasses.push(picked === 1 ? "swap-over" : "swap-under");
-    style += `--dx:${other[1] - col};--dy:${other[0] - row};`;
-  } else if (step.effect === "flip" && picked !== -1 && lit(cell) === lit(old) && elapsed < cssMs("--tap-ms")) {
-    classes.push("dud");
-  }
-  const tickFor = Math.max(cssMs("--tick-ms"), catalog.substrates.find((entry) => entry.id === cell.substrate)?.ticks === "neighbour" ? cssMs("--mark-ms") : 0);
-  if (old.counter !== cell.counter && elapsed < cssMs("--tick-start") + tickFor) tick = true;
-  if (snap.won && !before.won) {
-    const distance = Math.hypot(row - centreRow, col - centreCol);
-    if (elapsed < cssMs("--win-start") + distance * cssMs("--win-stagger") + cssMs("--win-ms")) {
-      classes.push("win");
-      style += `--win-d:${distance.toFixed(2)};`;
-    }
-  }
-  return { classes, cellClasses, style, tick };
+  if (snap.won && !before.won) board.append(wash(snap, centreRow, centreCol));
 }
 
 const CARD_FACES = {
@@ -392,14 +477,6 @@ function animateHand(step, oldNodes, oldRects) {
   if (!step.reverse && step.used_up && oldNodes[step.card] && !ghostPlays && !reducedMotion()) burn(cardClone(oldNodes[step.card], oldRects[step.card]));
 }
 
-const STEP_CLASSES = new Set(["swap-over", "swap-under", "locked", "lock-in"]);
-
-// takes a cell's press off once it has played, so it can't replay
-function unpress(cell) {
-  if (cell.classList.contains("press")) setTimeout(() => cell.classList.remove("press"), cssMs("--tap-ms"));
-}
-const STEP_KEEP_MS = 1200;
-
 // the win's wash: a soft ring that grows out from the board's middle, timed to reach the farthest tile as its sheen starts
 function wash(snap, centreRow, centreCol) {
   const farthest = Math.hypot(centreRow, centreCol);
@@ -423,49 +500,46 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   board.classList.toggle("picking", pickingTiles);
   board.classList.toggle("won", snap.won);
   board.classList.toggle("over", snap.game_over);
-  const wasPicked = lastPicked(board, snap);
-  // flipping: whether the tile is mid-flip, so a fresh pick's press (which would otherwise start when the flip's classes come off) is skipped
-  const cellClasses = (row, col, flipping) => {
-    const classes = [];
-    const candidate = has(snap.candidate_tiles, row, col);
-    if (has(snap.picked, row, col)) classes.push("picked", ...(wasPicked.includes(`${row},${col}`) ? [] : ["lock-in", ...(flipping ? [] : ["press"])]));
-    else if (candidate) classes.push(snap.targeting ? "targeting" : "candidate");
-    return classes;
-  };
   const centreRow = (snap.height - 1) / 2;
   const centreCol = (snap.width - 1) / 2;
 
-  const cells = board.querySelectorAll(".cell");
-  const rebuild = !track.sameGame || track.stepped || cells.length !== snap.cells.length;
-  if (rebuild) {
+  // the cells are built once per game (settling in from the middle outwards) and updated in place after that
+  let cells = [...board.querySelectorAll(".cell")];
+  const fresh = !track.sameGame || cells.length !== snap.cells.length;
+  if (fresh) {
     board.replaceChildren();
     board.classList.toggle("intro", !track.sameGame);
-    const anims = flipAnimations(track);
-    snap.cells.forEach((cell, index) => {
+    if (!track.sameGame) {
+      // the intro's class comes off when the last tile has settled, so the finished animations don't stay on the tiles
+      const intros = () => board.getAnimations({ subtree: true }).filter((anim) => anim.animationName === "intro");
+      requestAnimationFrame(() => settled(intros()).then(() => board.classList.remove("intro")));
+    }
+    cells = snap.cells.map((cell, index) => {
       const row = Math.floor(index / snap.width);
       const col = index % snap.width;
-      const extra = track.stepped ? stepExtras(track, index, centreRow, centreCol) : { classes: [], cellClasses: [], style: "", tick: false };
-      if (!track.sameGame) extra.style += `--d:${Math.hypot(row - centreRow, col - centreCol).toFixed(2)};`;
-      // a tile a play used shows the lock ring for a moment; it pops in unless it was already locked
-      if (extra.cellClasses.includes("locked") && !wasPicked.includes(`${row},${col}`)) extra.cellClasses.push("lock-in");
-      if (anims[index]) extra.classes = extra.classes.filter((name) => name !== "dud");
-      const node = renderCell(cell, { classes: [...cellClasses(row, col, Boolean(anims[index])), ...extra.cellClasses], grain: index, anim: anims[index], tile: extra });
+      const node = renderCell(cell, { grain: index, tile: { style: `--d:${Math.hypot(row - centreRow, col - centreCol).toFixed(2)};` } });
       node.dataset.row = row;
       node.dataset.col = col;
       board.append(node);
-      unpress(node);
+      return node;
     });
-    if (track.stepped && snap.won && track.before && !track.before.won) board.append(wash(snap, centreRow, centreCol));
-  } else {
-    // the step's classes stay while its animations run, so a tap mid-animation doesn't cut them short
-    const running = performance.now() - track.stepAt < STEP_KEEP_MS;
-    cells.forEach((node, index) => {
-      const kept = running ? [...node.classList].filter((name) => STEP_CLASSES.has(name)) : [];
-      const flipping = /\banim-(on|off)\b/.test(node.firstElementChild?.className ?? "");
-      node.className = ["cell", ...cellClasses(Math.floor(index / snap.width), index % snap.width, flipping), ...kept].join(" ");
-      unpress(node);
-    });
-  }
+  } else snap.cells.forEach((cell, index) => syncTile(cells[index].querySelector(".tile"), cell));
+  // what the card can pick: a newly picked tile locks in and presses
+  const wasPicked = cells.map((node) => node.classList.contains("picked") || node.classList.contains("locked"));
+  cells.forEach((node, index) => {
+    const row = Math.floor(index / snap.width);
+    const col = index % snap.width;
+    const picked = has(snap.picked, row, col);
+    const candidate = !picked && has(snap.candidate_tiles, row, col);
+    node.classList.toggle("picked", picked);
+    node.classList.toggle("targeting", candidate && snap.targeting);
+    node.classList.toggle("candidate", candidate && !snap.targeting);
+    if (picked && !wasPicked[index] && !fresh) {
+      lockIn(node);
+      pressTile(node.querySelector(".tile"));
+    }
+  });
+  if (track.stepped) animateStep(board, cells, track, snap, wasPicked);
   showPreview(board, snap.preview, snap.blocked, card);
 
   hand.classList.toggle("done", snap.won || snap.game_over);
@@ -531,7 +605,7 @@ export function attachPlayInput(board, hand, api) {
     const card = api.snap()?.hand[index];
     const peek = card && api.peek(index);
     if (!peek) return false;
-    for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("candidate", "targeting", "picked");
+    for (const cell of board.querySelectorAll(".cell")) cell.classList.remove("candidate", "targeting");
     for (const node of hand.querySelectorAll(".card")) node.classList.remove("candidate");
     if (card.kind === "card") {
       for (const i of peek.candidate_cards) cardNode(i)?.classList.add("candidate");
@@ -651,10 +725,12 @@ export function attachPlayInput(board, hand, api) {
   function moveSwipe(e) {
     const cell = under(e, ".cell.targeting[data-row]");
     if (cell === press.hover) return;
-    press.hover?.classList.remove("picked", "lock-in", "press");
+    press.hover?.classList.remove("picked", "lock-in");
     press.hover = cell;
-    cell?.classList.add("picked", "lock-in", "press");
-    if (cell) unpress(cell);
+    if (!cell) return;
+    cell.classList.add("picked");
+    lockIn(cell);
+    pressTile(cell.querySelector(".tile"));
   }
 
   function endSwipe(e) {

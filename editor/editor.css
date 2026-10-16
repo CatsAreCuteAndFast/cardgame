@@ -155,9 +155,9 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   color: #fff;
   line-height: 1.1;
 }
-.base, .base::after { position: absolute; inset: 7.5% 0 0 0; border-radius: var(--round); background: #221b28; }
-.base::after { content: ""; inset: 0; background: #b84a12; opacity: 0; }
-.tile.flipped .base::after { opacity: 1; }
+.base, .edge { position: absolute; inset: 7.5% 0 0 0; border-radius: var(--round); background: #221b28; }
+.edge { inset: 0; background: #b84a12; opacity: 0; }
+.tile.flipped .edge { opacity: 1; }
 .face {
   --face: var(--tile);
   position: absolute;
@@ -213,11 +213,10 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
     repeating-linear-gradient(45deg, #ffffff12 0 9.06cqw, transparent 9.06cqw 18.12cqw);
 }
 
-/* flip: the face is pushed in, the light spreads from the centre (the base's orange edge fades in with it) and the glow fades in
-   as it reaches the edges, then the face recoils like a button: it travels on deeper, springs back a little past its resting depth and settles,
-   on its own `translate`, so it adds to the press. unflip runs the other way: the face springs up past its rest, dips back a little and settles.
-   each part has its own start, length and easing, for flipping and for unflipping (-off).
-   the -start and -ms variables are also read by board.js (flipDuration), so keep them in ms */
+/* flip (flipTile in board.js runs it): the face is pushed in, the light spreads from the centre (the base's orange edge fades in with it)
+   and the glow fades in as it reaches the edges, then the face recoils like a button: it travels on deeper, springs back a little past its
+   resting depth and settles, on its own `translate`, so it adds to the press. unflip runs the other way: the face springs up past its rest,
+   dips back a little and settles. each part has its own start, length and easing, for flipping and for unflipping (-off), all in ms */
 :root {
   --press: 8.333%;
   --press-start: 0ms;
@@ -244,68 +243,9 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --recoil-depth-off: -1cqh;
   --recoil-back: .35;
 }
-.tile.anim-on {
-  --p-start: var(--press-start); --p-ms: var(--press-ms); --p-ease: var(--press-ease);
-  --l-start: var(--light-start); --l-ms: var(--light-ms); --l-ease: var(--light-ease);
-  --g-start: var(--glow-start); --g-ms: var(--glow-ms);
-  --r-start: var(--recoil-start); --r-ms: var(--recoil-ms); --r-depth: var(--recoil-depth);
-}
-.tile.anim-off {
-  --p-start: var(--press-start-off); --p-ms: var(--press-ms-off); --p-ease: var(--press-ease-off);
-  --l-start: var(--light-start-off); --l-ms: var(--light-ms-off); --l-ease: var(--light-ease-off);
-  --g-start: var(--glow-start-off); --g-ms: var(--glow-ms-off);
-  --r-start: var(--recoil-start-off); --r-ms: var(--recoil-ms-off); --r-depth: var(--recoil-depth-off);
-}
-.tile:is(.anim-on, .anim-off) :is(.face, .light, .glow),
-.tile:is(.anim-on, .anim-off) .base::after { animation-fill-mode: both; }
-.tile:is(.anim-on, .anim-off) .face {
-  animation-duration: var(--p-ms), var(--r-ms);
-  animation-delay: calc(var(--anim-delay, 0ms) + var(--p-start)), calc(var(--anim-delay, 0ms) + var(--r-start));
-  animation-timing-function: var(--p-ease), linear;
-}
-.tile:is(.anim-on, .anim-off) .light,
-.tile:is(.anim-on, .anim-off) .base::after {
-  animation-duration: var(--l-ms);
-  animation-delay: calc(var(--anim-delay, 0ms) + var(--l-start));
-  animation-timing-function: var(--l-ease);
-}
-.tile:is(.anim-on, .anim-off) .base::after { animation-timing-function: linear; }
-.tile:is(.anim-on, .anim-off) .glow {
-  animation-duration: var(--g-ms);
-  animation-delay: calc(var(--anim-delay, 0ms) + var(--g-start));
-  animation-timing-function: linear;
-}
-.tile.anim-on .base::after { animation-name: base-on; }
-.tile.anim-on .face { animation-name: press-in, recoil; }
-.tile.anim-on .light { animation-name: light-on; }
-.tile.anim-on .glow { animation-name: glow-on; }
-.tile.anim-off .base::after { animation-name: base-off; }
-.tile.anim-off .face { animation-name: press-out, recoil; }
-.tile.anim-off .light { animation-name: light-off; }
-.tile.anim-off .glow { animation-name: glow-off; }
-@keyframes press-in { from { transform: translateY(0); } to { transform: translateY(var(--press)); } }
-@keyframes press-out { from { transform: translateY(var(--press)); } to { transform: translateY(0); } }
-@keyframes base-on { from { opacity: 0; } to { opacity: 1; } }
-@keyframes base-off { from { opacity: 1; } to { opacity: 0; } }
-/* --l-from/--l-to (set by renderCell) let a three-state tile's light grow or shrink between 0, .5 and 1 */
-@keyframes light-on { from { transform: scale(var(--l-from, 0)); } to { transform: scale(var(--l-to, 1)); } }
-@keyframes light-off { from { transform: scale(var(--l-from, 1)); } to { transform: scale(var(--l-to, 0)); } }
-/* to or from half without being lit: only the light grows or shrinks */
-.tile.anim-half .light {
-  animation: light-on var(--light-ms) var(--light-ease) calc(var(--anim-delay, 0ms) + var(--light-start)) both;
-}
-@keyframes glow-on { from { opacity: 0; } to { opacity: 1; } }
-@keyframes glow-off { from { opacity: 1; } to { opacity: 0; } }
-/* past the rest position by --r-depth (down when positive), back the other way by --recoil-back of that, then settle */
-@keyframes recoil {
-  0% { translate: 0 0; animation-timing-function: cubic-bezier(.2, .6, .4, 1); }
-  30% { translate: 0 var(--r-depth); animation-timing-function: ease-in-out; }
-  65% { translate: 0 calc(-1 * var(--r-depth) * var(--recoil-back)); animation-timing-function: ease-in-out; }
-  100% { translate: 0 0; }
-}
-
-/* the other board animations. all of them are transforms and opacity on layers that are drawn once (the marching dashes are the one exception),
-   so a 5-8 year old phone runs them; each has its start, length and easing on :root for the Animations panel */
+/* the other board animations (board.js starts them on the tiles). all of them are transforms and opacity on layers that are drawn once
+   (the marching dashes are the one exception), so a 5-8 year old phone runs them; each has its start, length and easing on :root for the
+   Animations panel */
 :root {
   --link-delay: 70ms;
   --tap-ms: 260ms;
@@ -349,41 +289,8 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --text-ms: 220ms;
   --btn-ms: 120ms;
 }
-/* tapping a tile presses it like a button: a newly picked tile (.press, which board.js adds only while the tile isn't flipping and takes
-   off again after --tap-ms, so the press can't start late when a flip's classes come off), and a picked tile that a flip left unchanged (dud) */
-.cell.press .face,
-.tile.dud .face {
-  animation: tap-press var(--tap-ms) both;
-  animation-delay: var(--step-delay, 0ms);
-}
-@keyframes tap-press {
-  0% { translate: 0 0; animation-timing-function: cubic-bezier(.2, .6, .4, 1); }
-  40% { translate: 0 var(--tap-depth); animation-timing-function: ease-in-out; }
-  100% { translate: 0 0; }
-}
-/* swapped tiles slide into each other's cell, the first pick lifting over the other, which sinks a little.
-   the slide starts a cell pitch away: the tile's own width is .86 of the cell (see .cell), plus the board's gap */
-.tile.swap {
-  animation: swap-move var(--swap-ms) var(--swap-ease) both, swap-lift var(--swap-ms) ease-in-out both;
-  animation-delay: var(--step-delay, 0ms);
-}
-.tile.swap.over { --swap-scale: var(--swap-lift); }
-.tile.swap.under { --swap-scale: var(--swap-sink); }
-@keyframes swap-move {
-  from { transform: translate(calc(var(--dx) * (100% / .86 + var(--gap))), calc(var(--dy) * (100% / .86 + var(--gap)))); }
-  to { transform: none; }
-}
-@keyframes swap-lift { 50% { scale: var(--swap-scale); } }
-/* a timer that changed pops its number in (bigger when it reaches 0 and the tile is ready) */
-.counter.tick {
-  animation: tick var(--tick-ms) var(--tick-ease) both;
-  animation-delay: calc(var(--step-delay, 0ms) + var(--tick-start));
-}
-.counter.tick.ready { --tick-scale: 1.6; }
-@keyframes tick { from { scale: var(--tick-scale, 1.3); opacity: .3; } }
 /* a neighbour timer that changed gets an orange ring for a moment (placeholder look) */
-.counter.near.tick::after {
-  content: "";
+.counter .mark {
   position: absolute;
   width: 62cqw;
   aspect-ratio: 1;
@@ -391,42 +298,11 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   border-radius: 50%;
   box-shadow: 0 0 4cqw var(--flipped), inset 0 0 4cqw var(--flipped);
   opacity: 0;
-  animation: mark var(--mark-ms) ease-out both;
-  animation-delay: calc(var(--step-delay, 0ms) + var(--tick-start));
 }
-@keyframes mark {
-  from { scale: .6; opacity: 0; }
-  15% { scale: 1; opacity: 1; }
-  60% { opacity: 1; }
-  to { scale: 1; opacity: 0; }
-}
-/* the tiles a play used show the lock ring for a moment (it pops in if it wasn't showing), then it fades */
-.cell.locked .ring.lock {
-  display: block;
-  animation: fade-out var(--lock-ms) ease-out both;
-  animation-delay: calc(var(--step-delay, 0ms) + var(--lock-hold));
-}
-.cell.locked.lock-in .ring.lock {
-  animation: pop var(--pop-ms) var(--pop-ease) both, fade-out var(--lock-ms) ease-out both;
-  animation-delay: var(--step-delay, 0ms), calc(var(--step-delay, 0ms) + var(--lock-hold));
-}
+/* the tiles a play used show the lock ring for a moment (holdLock) */
+.cell.locked .ring.lock { display: block; }
 /* winning: a cleansing wash runs out from the board's middle: a soft ring grows over the board, and as it passes each tile
-   the tile swells a little and a white sheen passes over its face, later the farther the tile is from the middle */
-.tile.win,
-.tile.win .flash {
-  animation-duration: var(--win-ms);
-  animation-fill-mode: both;
-  animation-timing-function: ease-in-out;
-  animation-delay: calc(var(--step-delay, 0ms) + var(--win-start) + var(--win-d, 0) * var(--win-stagger));
-}
-.tile.win { animation-name: swell; }
-.tile.win .flash { animation-name: flash; }
-@keyframes swell { 40% { scale: var(--win-swell); } }
-@keyframes flash {
-  0% { opacity: 0; }
-  35% { opacity: var(--win-flash); }
-  100% { opacity: 0; }
-}
+   the tile swells a little and a white sheen passes over its face (winTile), later the farther the tile is from the middle */
 .board { overflow: hidden; }
 .wash {
   position: absolute;
@@ -441,7 +317,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   background: radial-gradient(circle, transparent 54%, rgb(255 255 255 / var(--wash-opacity)) 62%, transparent 70%);
   scale: 0;
   animation: wash var(--wash-ms, 1000ms) cubic-bezier(.2, .5, .4, 1) both;
-  animation-delay: calc(var(--step-delay, 0ms) + var(--win-start));
+  animation-delay: var(--win-start);
 }
 @keyframes wash {
   0% { scale: 0; opacity: 1; }
@@ -545,7 +421,8 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   border-radius: 8px;
 }
 /* tile outlines (art/outlines): a 126/110 rounded rect around the tile. a tile the card can act on gets marching dashes (.ring.valid),
-   a picked tile a solid glowing line (.ring.lock) that pops in once when picked (.lock-in) while the dashes fade out */
+   a picked tile a solid glowing line (.ring.lock) that pops in once when picked while the dashes fade out (lockIn in board.js; .lock-in
+   keeps the dashes shown for the crossfade) */
 :root {
   --outline: #ffffff;
   --ants-ms: 2800ms;
@@ -574,11 +451,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .cell:is(.candidate, .targeting, .preview, .preview-outline) .ring.valid,
 .cell.picked .ring.lock,
 .cell.picked.lock-in .ring.valid { display: block; }
-.cell.picked.lock-in .ring.valid { animation: fade-out var(--lock-ms) var(--lock-ease) both; }
-.cell.picked.lock-in .ring.lock { animation: pop var(--pop-ms) var(--pop-ease) both; }
 @keyframes ants { to { stroke-dashoffset: -42; } }
-@keyframes pop { from { transform: scale(var(--pop-scale)); opacity: 0; } }
-@keyframes fade-out { to { opacity: 0; } }
 /* a flip's preview also fills the tile with the colour it will flip to */
 .cell.preview .tile::before {
   content: "";

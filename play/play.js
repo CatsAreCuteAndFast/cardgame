@@ -1,6 +1,6 @@
 // The tester page: plays the levels in levels/pack.json.
 
-import { $, el, playStatus, renderSnapshot, attachPlayInput, setText, renderCell, setBoardShape, flipDuration } from "../editor/board.js";
+import { $, el, playStatus, renderSnapshot, attachPlayInput, setText, renderCell, setBoardShape, flipTile } from "../editor/board.js";
 import * as bridge from "../editor/bridge.js";
 import { initGrain } from "../editor/grain.js";
 
@@ -121,33 +121,34 @@ function renderLevels() {
 function levelBoard(levels) {
   const board = el("div", { class: "board level-board" });
   setBoardShape(board, 3, Math.ceil(levels.length / 3));
-  const total = flipDuration();
-  const cell = ({ entry, i }, n, anim) => {
-    const node = renderCell(
-      { type: "basic", flipped: anim ? anim.on : solved.has(levelKey(entry)), period: 0, link: null },
-      { classes: i === index ? ["candidate"] : [], grain: n, anim, onclick: () => enter(entry, i, n, node) },
-    );
-    node.title = entry.name;
-    node.querySelector(".face").append(el("span", { class: "counter level-number", textContent: String(n + 1) }));
-    return node;
-  };
-  const enter = (entry, i, n, node) => {
+  const tiles = [];
+  const enter = (entry, i, n) => {
     if (entering) return;
     entering = true;
-    const wait = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : total;
-    node.replaceWith(cell({ entry, i }, n, { on: !solved.has(levelKey(entry)), elapsed: 0, total }));
-    setTimeout(() => {
+    const on = !solved.has(levelKey(entry));
+    tiles[n].classList.toggle("flipped", on);
+    flipTile(tiles[n], on ? 0 : 1, on ? 1 : 0).then(() => {
       entering = false;
       startLevel(i);
       tab = "play";
       render();
       window.scrollTo(0, 0);
-    }, wait);
+    });
   };
-  levels.forEach((level, n) => {
-    const fresh = newlySolved.delete(levelKey(level.entry));
-    board.append(cell(level, n, fresh ? { on: true, elapsed: -200, total } : null));
+  const fresh = [];
+  levels.forEach(({ entry, i }, n) => {
+    if (newlySolved.delete(levelKey(entry))) fresh.push(n);
+    const node = renderCell(
+      { type: "basic", flipped: solved.has(levelKey(entry)), period: 0, link: null },
+      { classes: i === index ? ["candidate"] : [], grain: n, onclick: () => enter(entry, i, n) },
+    );
+    node.title = entry.name;
+    node.querySelector(".face").append(el("span", { class: "counter level-number", textContent: String(n + 1) }));
+    tiles.push(node.querySelector(".tile"));
+    board.append(node);
   });
+  // a level solved since the tab was last shown lights up once the board is on the page
+  if (fresh.length) requestAnimationFrame(() => fresh.forEach((n) => flipTile(tiles[n], 0, 1, 200)));
   return board;
 }
 
