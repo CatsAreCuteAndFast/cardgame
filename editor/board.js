@@ -292,41 +292,20 @@ export function playStatus(snap, budget) {
   return { text: `Plays left: ${snap.plays}`, className: "" };
 }
 
-// sets a line's text and class, sliding the new text in when it changed
+// sets a line's text and class; a win pops in
 export function setText(node, text, className = "") {
   if (node.dataset.text === text && node.dataset.cls === className) return;
   node.dataset.text = text;
   node.dataset.cls = className;
   node.textContent = text;
   node.className = className;
+  if (className !== "won") return;
   void node.offsetWidth;
-  node.classList.add("text-in");
+  node.classList.add("pop");
 }
 
 function selectedCard(snap) {
   return snap.selected === null ? null : snap.hand[snap.selected];
-}
-
-export function playPrompt(snap) {
-  if (snap.won || snap.game_over) return "";
-  const card = selectedCard(snap);
-  if (!card) return "Tap a card, or drag it onto the board";
-  const progress = snap.needed > 1 ? ` (${snap.picked.length}/${snap.needed})` : "";
-  switch (card.kind) {
-    case "fixed":
-      return "Tap one of the highlighted tiles to play the card";
-    case "from":
-      return "Tap one of the highlighted tiles";
-    case "any":
-      return snap.needed === 1 ? "Tap any tile" : `Tap ${snap.needed} tiles${progress}`;
-    case "adjacent":
-      if (snap.picked.length === 0) return `Swipe across ${snap.needed === 2 ? "two neighbouring" : "neighbouring"} tiles, or tap them`;
-      return `Tap a neighbouring tile${progress}`;
-    case "card":
-      return "Tap a highlighted card to change it";
-    default:
-      return "";
-  }
 }
 
 function canSwipe(snap) {
@@ -394,7 +373,7 @@ let ghostPlays = false;
 // a fixed-position copy of a card at rect, for a card leaving the hand
 function cardClone(node, rect) {
   const clone = node.cloneNode(true);
-  clone.className = node.className.replace(/\b(selected|candidate|peeking|drag-source|drop-target|played)\b/g, "") + " card-fly";
+  clone.className = node.className.replace(/\b(selected|candidate|peeking|drag-source|drop-target)\b/g, "") + " card-fly";
   Object.assign(clone.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
   clone.removeAttribute("data-index");
   document.body.append(clone);
@@ -408,21 +387,9 @@ export function burn(node) {
   setTimeout(() => node.remove(), cssMs("--burn-ms") + 100);
 }
 
-// adds an animation class to a card and takes it off when that animation ends, so a later clone (the drag ghost) doesn't replay it
-function addAnim(node, name) {
-  node.classList.add(name);
-  const done = (e) => e.target === node && node.classList.remove(name);
-  node.addEventListener("animationend", done, { once: true });
-  node.addEventListener("animationcancel", done, { once: true });
-}
-
-// after a play rebuilt the hand: the played card stamps down, or burns in its slot when it was used up
-function animateHand(hand, step, oldNodes, oldRects) {
-  if (step.reverse) return;
-  if (!step.used_up) {
-    const node = hand.querySelectorAll(".card[data-index]")[step.card];
-    if (node) addAnim(node, "played");
-  } else if (oldNodes[step.card] && !ghostPlays && !reducedMotion()) burn(cardClone(oldNodes[step.card], oldRects[step.card]));
+// after a play rebuilt the hand: a used-up card burns in its slot
+function animateHand(step, oldNodes, oldRects) {
+  if (!step.reverse && step.used_up && oldNodes[step.card] && !ghostPlays && !reducedMotion()) burn(cardClone(oldNodes[step.card], oldRects[step.card]));
 }
 
 const STEP_CLASSES = new Set(["swap-over", "swap-under", "locked", "lock-in"]);
@@ -516,7 +483,7 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     });
     window.scrollTo(scroll[0], scroll[1]);
     hand.scrollLeft = scroll[2];
-    if (track.stepped && track.step) animateHand(hand, track.step, oldNodes, oldRects);
+    if (track.stepped && track.step) animateHand(track.step, oldNodes, oldRects);
     return;
   }
   oldNodes.forEach((node, index) => {
@@ -581,7 +548,7 @@ export function attachPlayInput(board, hand, api) {
     const source = cardNode(press.index);
     if (!source) return (press = null);
     press.ghost = source.cloneNode(true);
-    press.ghost.classList.remove("selected", "candidate", "drop-target", "peeking", "played");
+    press.ghost.classList.remove("selected", "candidate", "drop-target", "peeking");
     press.ghost.classList.add("drag-ghost");
     placeGhost(e.clientX, e.clientY);
     document.body.append(press.ghost);

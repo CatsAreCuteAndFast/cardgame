@@ -74,7 +74,6 @@ const GROUPS = [
   ["Cards", [
     ms("--card-ms", "Lift lasts", 1000), ease("--card-ease", "Lift easing"),
     { name: "--card-lift", label: "Lift height (− is up)", unit: "px", min: -20, max: 0, step: 1 },
-    ms("--played-ms", "Stamp lasts", 1000),
     ms("--burn-ms", "Burn lasts", 2000), ease("--burn-ease", "Ember easing"),
     ms("--fly-ms", "Shrink into board lasts", 1000), ease("--fly-ease", "Shrink easing"),
     ms("--return-ms", "Ghost returns for", 1000),
@@ -85,7 +84,7 @@ const GROUPS = [
     ms("--intro-stagger", "Per tile of distance", 300),
     ms("--deal-ms", "Each card deals for", 1000), ease("--deal-ease", "Deal easing"),
     ms("--deal-stagger", "Per card", 300),
-    ms("--text-ms", "Text slides in for", 1000),
+    ms("--text-ms", "Buttons pop in for", 1000),
   ]],
 ];
 const SETTINGS = GROUPS.flatMap(([, settings]) => settings);

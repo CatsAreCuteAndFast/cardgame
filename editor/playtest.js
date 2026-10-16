@@ -1,6 +1,6 @@
 // The Play tab: playtesting the open level with the real rules, and saving a solution.
 
-import { $, toast, playPrompt, playStatus, renderSnapshot, attachPlayInput, setText } from "./board.js";
+import { $, toast, playStatus, renderSnapshot, attachPlayInput, setText } from "./board.js";
 import * as bridge from "./bridge.js";
 import { current, saveLevels } from "./store.js";
 import { render } from "./editor.js";
@@ -45,7 +45,6 @@ export function renderPlay() {
   $("play-redo").disabled = !snap?.can_redo;
   $("play-cancel").hidden = !(snap && snap.selected !== null);
   $("play-save-solution").hidden = !snap?.won;
-  setText($("play-prompt"), snap ? playPrompt(snap) : "");
   if (!snap) {
     setText(status, "");
     board.replaceChildren();

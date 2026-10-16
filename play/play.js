@@ -1,6 +1,6 @@
 // The tester page: plays the levels in levels/pack.json.
 
-import { $, el, playPrompt, playStatus, renderSnapshot, attachPlayInput, setText, renderCell, setBoardShape, flipDuration } from "../editor/board.js";
+import { $, el, playStatus, renderSnapshot, attachPlayInput, setText, renderCell, setBoardShape, flipDuration } from "../editor/board.js";
 import * as bridge from "../editor/bridge.js";
 import { initGrain } from "../editor/grain.js";
 
@@ -164,7 +164,6 @@ function renderPlay() {
   $("play-reset").disabled = !snap;
   $("play-next").hidden = !(snap?.won && index + 1 < pack.length);
   $("play-cancel").hidden = !(snap && snap.selected !== null);
-  setText($("play-prompt"), snap ? playPrompt(snap) : "");
   const { text, className } = snap ? playStatus(snap, pack[index].level.budget) : { text: "", className: "" };
   setText(status, text, className);
   if (!snap) {

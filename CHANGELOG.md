@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-16**: as Drifl asked, removed the played card's stamp, the slide-in of changed status/prompt text, and the grey helper text above the hand (`playPrompt` and `#play-prompt` are gone; the row now only holds Cancel, Next level or Save solution, right-aligned, at the same fixed height). The win line still pops in, through `setText` adding `.pop`. The "Text slides in for" slider is now "Buttons pop in for", since `--text-ms` only times the buttons' pop-in now.
+
 - **2026-10-16**: as Drifl asked, removed four hand animations: a retarget's copy coming out of the card it copies, an undone copy shrinking away, cards sliding along the hand, and a card being dealt back in on undo (the generic `deal-in` entry). `shrinkAway` and `handMapping` are gone, and `animateHand` now only stamps the played card or burns a used-up one. The new-game deal stays; its "Deal lasts"/"Deal easing" sliders moved to the New game group.
 
 - **2026-10-16**: as Drifl asked, neighbour timers now cycle like play timers: each step (once for its own tile and each orthogonal neighbour a flip card touches) counts down by 1, and a step at 0 restarts it at its period. Before, they stayed at 0 until their own tile flipped, which reset them. The neighbour timer test follows the new rule.

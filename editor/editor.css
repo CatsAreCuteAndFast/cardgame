@@ -344,7 +344,6 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   --fly-ms: 380ms;
   --fly-ease: cubic-bezier(.5, 0, .85, .45);
   --return-ms: 260ms;
-  --played-ms: 320ms;
   --settle-start: 450ms;
   --settle-ms: 500ms;
   --text-ms: 220ms;
@@ -487,15 +486,13 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
   55% { translate: -3px 0; }
   75% { translate: 2px 0; }
 }
-/* a changed status or prompt line slides in; the win line pops */
-.text-in { animation: text-in var(--text-ms) ease-out; }
-@keyframes text-in { from { opacity: .2; translate: 0 -4px; } }
-#play-status.won.text-in { animation: pop-in 500ms var(--pop-ease); }
+/* the win line pops in, and so do the prompt row's buttons */
+#play-status.pop { animation: pop-in 500ms var(--pop-ease); }
 .row.prompt button:not([hidden]) { animation: pop-in var(--text-ms) var(--card-ease); }
 @keyframes pop-in { from { scale: .8; opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile, .tile *, .tile *::after, .tile::before, .tile::after, .card, .ember, .wash, .hand, .board, .text-in, .row.prompt button, .drag-ghost, .card-fly {
+  .tile, .tile *, .tile *::after, .tile::before, .tile::after, .card, .ember, .wash, .hand, .board, #play-status, .row.prompt button, .drag-ghost, .card-fly {
     animation: none !important;
     transition: none !important;
   }
@@ -768,13 +765,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .card.peeking { transform: translateY(var(--card-lift)) scale(1.04); }
 /* the card being dragged stays in its slot, faded, until the ghost comes back or is played */
 .card.drag-source { opacity: .3; transform: scale(.95); }
-/* a card that was just played stamps down from its lifted place; at a new game the hand is dealt in one card after another */
-.card.played { animation: stamp var(--played-ms) ease-out; }
-@keyframes stamp {
-  0% { transform: translateY(var(--card-lift)); }
-  35% { transform: translateY(3px) scale(.96); }
-  100% { transform: none; }
-}
+/* at a new game the hand is dealt in one card after another */
 .hand.intro .card { animation: deal-in var(--deal-ms) var(--deal-ease) both; }
 .hand.intro .card { animation-delay: calc(var(--i, 0) * var(--deal-stagger)); }
 @keyframes deal-in { from { opacity: 0; transform: translateY(24px) scale(.85); } }
@@ -814,8 +805,7 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 }
 
 
-.row.prompt { justify-content: space-between; height: 48px; color: var(--muted); font-size: .95rem; line-height: 1.25; }
-#play-prompt { flex: 1; max-height: 2.5em; overflow: hidden; }
+.row.prompt { justify-content: flex-end; height: 48px; }
 #play-status { white-space: nowrap; display: inline-block; }
 
 #play-status { font-weight: 600; }
