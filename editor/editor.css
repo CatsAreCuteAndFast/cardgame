@@ -768,18 +768,16 @@ main { padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); max-width: 7
 .card.peeking { transform: translateY(var(--card-lift)) scale(1.04); }
 /* the card being dragged stays in its slot, faded, until the ghost comes back or is played */
 .card.drag-source { opacity: .3; transform: scale(.95); }
-/* a card that was just played stamps down from its lifted place; a card new to the hand is dealt in (from below, or from above when
-   an undo brings it back from the board); at a new game the whole hand is dealt in one card after another */
+/* a card that was just played stamps down from its lifted place; at a new game the hand is dealt in one card after another */
 .card.played { animation: stamp var(--played-ms) ease-out; }
 @keyframes stamp {
   0% { transform: translateY(var(--card-lift)); }
   35% { transform: translateY(3px) scale(.96); }
   100% { transform: none; }
 }
-.card.deal-in,
 .hand.intro .card { animation: deal-in var(--deal-ms) var(--deal-ease) both; }
 .hand.intro .card { animation-delay: calc(var(--i, 0) * var(--deal-stagger)); }
-@keyframes deal-in { from { opacity: 0; transform: translateY(var(--from-y, 24px)) scale(.85); } }
+@keyframes deal-in { from { opacity: 0; transform: translateY(24px) scale(.85); } }
 .hand .card { touch-action: pan-x; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .badge {
   position: absolute;

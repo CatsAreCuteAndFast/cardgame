@@ -2,6 +2,8 @@
 
 Newest first. Each entry gives the date, what changed and why. Older entries also give the commit hash; from this file's creation on, each entry is part of the commit it describes, so `git log -- CHANGELOG.md` finds it.
 
+- **2026-10-16**: as Drifl asked, removed four hand animations: a retarget's copy coming out of the card it copies, an undone copy shrinking away, cards sliding along the hand, and a card being dealt back in on undo (the generic `deal-in` entry). `shrinkAway` and `handMapping` are gone, and `animateHand` now only stamps the played card or burns a used-up one. The new-game deal stays; its "Deal lasts"/"Deal easing" sliders moved to the New game group.
+
 - **2026-10-16**: as Drifl asked, neighbour timers now cycle like play timers: each step (once for its own tile and each orthogonal neighbour a flip card touches) counts down by 1, and a step at 0 restarts it at its period. Before, they stayed at 0 until their own tile flipped, which reset them. The neighbour timer test follows the new rule.
 
 - **2026-10-12**: as Drifl asked, neighbour timers now count every tile a flip card touches, not only tiles that changed: a timer counts down once for its own tile and once for each orthogonal neighbour among the picked tiles (blocked ones included) and the link groups that flip (`touched` in the flip plan, used by `tick` in `game/state.js`). Its own tile flipping still resets it. A neighbour timer that changed in a play now also shows a brief orange ring around its number (`--mark-ms`, slider under Timers), a placeholder indicator. The neighbour timer test was updated for the new rule. No pack level uses neighbour timers, so no saved solutions changed.

@@ -394,21 +394,11 @@ let ghostPlays = false;
 // a fixed-position copy of a card at rect, for a card leaving the hand
 function cardClone(node, rect) {
   const clone = node.cloneNode(true);
-  clone.className = node.className.replace(/\b(selected|candidate|peeking|drag-source|drop-target|played|deal-in)\b/g, "") + " card-fly";
+  clone.className = node.className.replace(/\b(selected|candidate|peeking|drag-source|drop-target|played)\b/g, "") + " card-fly";
   Object.assign(clone.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
   clone.removeAttribute("data-index");
   document.body.append(clone);
   return clone;
-}
-
-// a card leaving the hand: an undone copy shrinks away where it is
-function shrinkAway(node, rect) {
-  if (reducedMotion()) return;
-  const clone = cardClone(node, rect);
-  const duration = cssMs("--return-ms");
-  const anim = clone.animate([{ transform: "none", opacity: 1 }, { transform: "scale(.8)", opacity: 0 }], { duration, easing: cssValue("--card-ease"), fill: "forwards" });
-  anim.onfinish = anim.oncancel = () => clone.remove();
-  setTimeout(() => clone.remove(), duration + 100);
 }
 
 // a used-up card burns: an ember line climbs the card leaving char behind, then the husk fades (.burn in editor.css); the node is removed after
@@ -416,22 +406,6 @@ export function burn(node) {
   node.append(el("div", { class: "ember" }));
   node.classList.add("burn");
   setTimeout(() => node.remove(), cssMs("--burn-ms") + 100);
-}
-
-// which hand position each card had before a step: pairs [old index, new index] for cards in both hands, old indices that are gone,
-// new indices that are fresh. forward, the card at step.card leaves if it was single use and a retarget appends a copy; undo reverses that
-function handMapping(step, oldCount, newCount) {
-  const identity = { pairs: Array.from({ length: Math.min(oldCount, newCount) }, (_, i) => [i, i]), gone: [], fresh: [] };
-  if (!step) return identity;
-  const after = Array.from({ length: step.reverse ? newCount : oldCount }, (_, i) => i);
-  if (step.added) after.push("new");
-  if (step.used_up) after.splice(step.card, 1);
-  if (after.length !== (step.reverse ? oldCount : newCount)) return identity;
-  const copies = after.flatMap((j, p) => (j === "new" ? [p] : []));
-  const pairs = after.flatMap((j, p) => (j === "new" ? [] : [step.reverse ? [p, j] : [j, p]]));
-  return step.reverse
-    ? { pairs, gone: copies, fresh: step.used_up ? [step.card] : [] }
-    : { pairs, gone: step.used_up ? [step.card] : [], fresh: copies };
 }
 
 // adds an animation class to a card and takes it off when that animation ends, so a later clone (the drag ghost) doesn't replay it
@@ -442,43 +416,13 @@ function addAnim(node, name) {
   node.addEventListener("animationcancel", done, { once: true });
 }
 
-// after a step rebuilt the hand: a played card stamps down, a used-up card burns in its slot (an undone one is dealt back from above),
-// a retarget's copy comes out of the card it copies and an undone copy shrinks away; cards that moved slide to their new place,
-// after the burn has mostly gone when a card burned
-function animateHand(hand, track, map, oldNodes, oldRects) {
-  const nodes = [...hand.querySelectorAll(".card[data-index]")];
-  const { step } = track;
-  const ms = cssMs("--deal-ms");
-  const easing = cssValue("--deal-ease");
-  const burning = map.gone.length > 0 && !step.reverse;
-  const delay = burning ? cssMs("--burn-ms") * 0.6 : 0;
-  for (const [o, n] of map.pairs) {
-    const node = nodes[n];
-    if (!node || !oldRects[o]) continue;
-    const dx = oldRects[o].left - node.getBoundingClientRect().left;
-    if (Math.abs(dx) > 1 && !reducedMotion()) node.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: ms, delay, easing, fill: "backwards" });
-    if (!step.reverse && o === step.card) addAnim(node, "played");
-  }
-  for (const n of map.fresh) {
-    const node = nodes[n];
-    if (!node) continue;
-    const source = !step.reverse && step.effect === "retarget" ? oldRects[step.target] : null;
-    if (source && !reducedMotion()) {
-      const rect = node.getBoundingClientRect();
-      node.animate(
-        [{ transform: `translate(${source.left - rect.left}px, ${source.top - rect.top}px) scale(.9)`, opacity: 0.3 }, { transform: "none", opacity: 1 }],
-        { duration: ms, easing },
-      );
-    } else {
-      node.style.setProperty("--from-y", step.reverse ? "-24px" : "24px");
-      addAnim(node, "deal-in");
-    }
-  }
-  for (const o of map.gone) {
-    if (!oldNodes[o]) continue;
-    if (step.reverse) shrinkAway(oldNodes[o], oldRects[o]);
-    else if (!ghostPlays && !reducedMotion()) burn(cardClone(oldNodes[o], oldRects[o]));
-  }
+// after a play rebuilt the hand: the played card stamps down, or burns in its slot when it was used up
+function animateHand(hand, step, oldNodes, oldRects) {
+  if (step.reverse) return;
+  if (!step.used_up) {
+    const node = hand.querySelectorAll(".card[data-index]")[step.card];
+    if (node) addAnim(node, "played");
+  } else if (oldNodes[step.card] && !ghostPlays && !reducedMotion()) burn(cardClone(oldNodes[step.card], oldRects[step.card]));
 }
 
 const STEP_CLASSES = new Set(["swap-over", "swap-under", "locked", "lock-in"]);
@@ -563,7 +507,6 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
   const oldNodes = [...hand.querySelectorAll(".card[data-index]")];
   if (!track.sameGame || track.stepped || oldNodes.length !== snap.hand.length) {
     const oldRects = track.stepped ? oldNodes.map((node) => node.getBoundingClientRect()) : [];
-    const map = track.stepped ? handMapping(track.step, oldNodes.length, snap.hand.length) : null;
     hand.replaceChildren();
     hand.classList.toggle("intro", !track.sameGame);
     snap.hand.forEach((card, index) => {
@@ -573,7 +516,7 @@ export function renderSnapshot(snap, board, hand, { onTile, onCard }) {
     });
     window.scrollTo(scroll[0], scroll[1]);
     hand.scrollLeft = scroll[2];
-    if (map) animateHand(hand, track, map, oldNodes, oldRects);
+    if (track.stepped && track.step) animateHand(hand, track.step, oldNodes, oldRects);
     return;
   }
   oldNodes.forEach((node, index) => {
@@ -638,7 +581,7 @@ export function attachPlayInput(board, hand, api) {
     const source = cardNode(press.index);
     if (!source) return (press = null);
     press.ghost = source.cloneNode(true);
-    press.ghost.classList.remove("selected", "candidate", "drop-target", "peeking", "played", "deal-in");
+    press.ghost.classList.remove("selected", "candidate", "drop-target", "peeking", "played");
     press.ghost.classList.add("drag-ghost");
     placeGhost(e.clientX, e.clientY);
     document.body.append(press.ghost);
